@@ -25,82 +25,74 @@ jobs:
     steps:
       - name: Check out profile repository
         uses: actions/checkout@v4
-      - name: Fetch public GitHub contribution calendar and repository metrics
+      - name: Fetch contribution calendar and repository metrics
         env:
           GH_USERNAME: hitenborkar1406-ops
           GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p data
           python - <<'PY'
-          import json, os, re, urllib.request
-          from datetime import date, timedelta
-          from html.parser import HTMLParser
+          import json, os, urllib.request
 
-          class ContributionParser(HTMLParser):
-              def __init__(self):
-                  super().__init__()
-                  self.rows=[]
-                  self.current=None
-              def handle_starttag(self, tag, attrs):
-                  attrs=dict(attrs)
-                  if tag=="td" and attrs.get("data-date"):
-                      self.current={"date":attrs["data-date"],"count":attrs.get("data-count"),"text":attrs.get("aria-label","")}
-              def handle_data(self, data):
-                  if self.current is not None:
-                      self.current["text"]+=" "+data
-              def handle_endtag(self, tag):
-                  if tag=="td" and self.current is not None:
-                      raw=self.current.get("count")
-                      if raw is None:
-                          match=re.search(r"(\d+)\s+contributions?",self.current["text"],re.I)
-                          raw=match.group(1) if match else ("0" if re.search(r"no contributions",self.current["text"],re.I) else None)
-                      if raw is not None:
-                          self.rows.append({"date":self.current["date"],"contributionCount":int(raw)})
-                      self.current=None
+          username = os.environ["GH_USERNAME"]
+          contribution_url = f"https://github-contributions-api.jogruber.de/v4/{username}?y=last"
+          request = urllib.request.Request(
+              contribution_url,
+              headers={"User-Agent": "profile-readme-renderer", "Accept": "application/json"}
+          )
+          with urllib.request.urlopen(request, timeout=45) as response:
+              payload = json.load(response)
 
-          username=os.environ["GH_USERNAME"]
-          end=date.today()
-          start=end-timedelta(days=364)
-          page=f"https://github.com/users/{username}/contributions?from={start.isoformat()}&to={end.isoformat()}"
-          request=urllib.request.Request(page,headers={"User-Agent":"Mozilla/5.0 profile-readme-renderer"})
-          with urllib.request.urlopen(request,timeout=40) as response:
-              html=response.read().decode("utf-8","replace")
-          parser=ContributionParser()
-          parser.feed(html)
-          days=sorted({d["date"]:d for d in parser.rows}.values(),key=lambda x:x["date"])
-          if len(days)<300:
-              sample=re.sub(r"\s+"," ",html[:700])
-              raise SystemExit(f"GitHub contribution page parser found only {len(days)} days (expected at least 300). Page sample: {sample}")
-          weeks=[{"contributionDays":days[i:i+7]} for i in range(0,len(days),7)]
-          total=sum(d["contributionCount"] for d in days)
-          with open("data/contributions.json","w",encoding="utf-8") as out:
-              json.dump({"total":total,"weeks":weeks},out,indent=2)
-          print(f"Fetched {len(days)} contribution days and {total} contributions.")
+          raw_days = payload.get("contributions", [])
+          days = [
+              {"date": day["date"], "contributionCount": int(day.get("count", 0))}
+              for day in raw_days if day.get("date")
+          ]
+          days.sort(key=lambda day: day["date"])
+          if len(days) < 300:
+              raise SystemExit(f"Contribution API returned only {len(days)} days; expected at least 300.")
 
-          token=os.environ.get("GH_TOKEN","")
-          headers={"User-Agent":"profile-readme-renderer","Accept":"application/vnd.github+json"}
-          if token: headers["Authorization"]="Bearer "+token
-          repo_names=["SMART_TRAFFIC_MANAGEMENT_SYSTEM","IPL_CRUNCH","PROMPTWARS","VEHICLE-RENTAL-SYSTEM"]
-          repo_data={}
-          def api(url):
-              req=urllib.request.Request(url,headers=headers)
-              with urllib.request.urlopen(req,timeout=30) as resp:
-                  return json.load(resp)
-          for name in repo_names:
-              base=f"https://api.github.com/repos/{username}/{name}"
+          total_data = payload.get("total", {})
+          total = int(total_data.get("lastYear", sum(day["contributionCount"] for day in days)))
+          weeks = [{"contributionDays": days[i:i+7]} for i in range(0, len(days), 7)]
+          with open("data/contributions.json", "w", encoding="utf-8") as output:
+              json.dump({"total": total, "weeks": weeks}, output, indent=2)
+          print(f"Fetched {len(days)} days and {total} contributions for {username}.")
+
+          token = os.environ.get("GH_TOKEN", "")
+          headers = {"User-Agent": "profile-readme-renderer", "Accept": "application/vnd.github+json"}
+          if token:
+              headers["Authorization"] = "Bearer " + token
+
+          def github_api(url):
+              request = urllib.request.Request(url, headers=headers)
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.load(response)
+
+          repository_names = [
+              "SMART_TRAFFIC_MANAGEMENT_SYSTEM", "IPL_CRUNCH",
+              "PROMPTWARS", "VEHICLE-RENTAL-SYSTEM"
+          ]
+          repositories = {}
+          for name in repository_names:
+              base = f"https://api.github.com/repos/{username}/{name}"
               try:
-                  meta=api(base)
-                  try: languages=api(base+"/languages")
-                  except Exception as e:
-                      print(f"Language stats unavailable for {name}: {e}")
-                      languages={}
-                  meta["languages"]=languages
-                  repo_data[name]=meta
-                  print(f"Fetched metrics for {name}: {meta.get('stargazers_count',0)} stars, {meta.get('forks_count',0)} forks.")
-              except Exception as e:
-                  print(f"Repository metrics unavailable for {name}: {e}")
-          with open("data/repos.json","w",encoding="utf-8") as out:
-              json.dump(repo_data,out,indent=2)
+                  metadata = github_api(base)
+                  try:
+                      metadata["languages"] = github_api(base + "/languages")
+                  except Exception as error:
+                      print(f"Language breakdown unavailable for {name}: {error}")
+                      metadata["languages"] = {}
+                  repositories[name] = metadata
+                  print(
+                      f"{name}: {metadata.get('stargazers_count', 0)} stars, "
+                      f"{metadata.get('forks_count', 0)} forks"
+                  )
+              except Exception as error:
+                  print(f"Repository metrics unavailable for {name}: {error}")
+
+          with open("data/repos.json", "w", encoding="utf-8") as output:
+              json.dump(repositories, output, indent=2)
           PY
       - name: Set up Python
         uses: actions/setup-python@v5
