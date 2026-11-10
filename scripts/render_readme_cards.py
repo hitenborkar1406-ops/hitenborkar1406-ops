@@ -7,7 +7,7 @@ from xml.sax.saxutils import escape
 
 ROOT=Path(__file__).resolve().parents[1]; OUT=ROOT/"cards"; DATA=ROOT/"data"/"contributions.json"; REPOS=ROOT/"data"/"repos.json"
 BG,INK,CYAN,BLUE,TAUPE,LINE="#0B0C0E","#F0E8DA","#63D6E2","#398B9A","#BEB09A","#4A4640"; PANEL="#17191D"
-PORTRAIT=ROOT/"data"/"portrait.json"
+ASCII_ART=ROOT/"data"/"ascii_art.txt"
 def svg(w,h,title,body):
  return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{escape(title)}"><title>{escape(title)}</title><defs><style>text{{font-family:Inter,Arial,sans-serif}}.serif{{font-family:Georgia,serif}}@keyframes rise{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:translateY(0)}}}}@keyframes pulse{{0%,100%{{opacity:.35}}50%{{opacity:1}}}}@keyframes reveal{{from{{opacity:0}}to{{opacity:1}}}}.portrait-row{{opacity:1}}.enter{{animation:rise .8s ease both}}.pulse{{animation:pulse 2.8s ease-in-out infinite}}@media(prefers-reduced-motion:reduce){{*{{animation:none!important;opacity:1!important}}}}</style></defs>{body}</svg>'''
 def save(name,w,h,title,body):
@@ -30,43 +30,26 @@ def activity_stats(days):
  for d in days: monthly[d["date"][:7]]+=int(d.get("contributionCount",0))
  return counts,len(active),current,best,busiest,monthly
 def render_hero(total):
- portrait=read_json(PORTRAIT,{})
- ascii_rows=portrait.get("asciiText",[])
- color_rows=portrait.get("asciiColors",[])
- cols=int(portrait.get("cols",150))
- rows=int(portrait.get("rows",75))
+ ascii_rows=ASCII_ART.read_text(encoding="utf-8").splitlines()
+ if not ascii_rows:
+  raise ValueError("data/ascii_art.txt is empty")
+ cols=max(len(line) for line in ascii_rows)
+ rows=len(ascii_rows)
+ if rows!=101 or cols!=202:
+  raise ValueError(f"Expected the uploaded 202x101 ASCII artwork, got {cols}x{rows}")
  panel_x,panel_y,panel_w,panel_h=605,32,570,566
- font_size=5.5
+ font_size=4.2
  cell_w=font_size*0.60
- line_h=6.3
+ line_h=font_size*1.20
  ascii_width=cols*cell_w
+ ascii_height=rows*line_h
  ascii_x=panel_x+(panel_w-ascii_width)/2
- first_y=89
- body=f'<rect width="1200" height="630" rx="24" fill="{BG}"/><circle cx="895" cy="310" r="270" fill="{CYAN}" opacity=".045"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">INK / CYAN / SYSTEMS</text><rect x="{panel_x}" y="{panel_y}" width="{panel_w}" height="{panel_h}" rx="20" fill="#060606" stroke="{LINE}"/><text x="628" y="60" fill="{CYAN}" font-size="10" letter-spacing="2">GITASCII / ORIGINAL BINARY ASCII</text>'
- for row_index in range(min(rows,len(ascii_rows))):
-  row=ascii_rows[row_index]
-  colors=color_rows[row_index] if row_index<len(color_rows) else []
-  runs=[]
-  run_color=None
-  run_text=""
-  for col_index,char in enumerate(row[:cols]):
-   color=colors[col_index] if col_index<len(colors) else INK
-   if not (isinstance(color,str) and len(color)==7 and color.startswith("#")):
-    color=INK
-   if run_color is None:
-    run_color=color
-    run_text=char
-   elif color==run_color:
-    run_text+=char
-   else:
-    runs.append(f'<tspan fill="{run_color}">{escape(run_text)}</tspan>')
-    run_color=color
-    run_text=char
-  if run_color is not None:
-   runs.append(f'<tspan fill="{run_color}">{escape(run_text)}</tspan>')
-  body+=f'<text x="{ascii_x:.2f}" y="{first_y+row_index*line_h:.2f}" font-family="JetBrains Mono,DejaVu Sans Mono,monospace" font-size="{font_size}" xml:space="preserve">{"".join(runs)}</text>'
- body+=f'<path d="M628 574 H1152" stroke="{LINE}" stroke-width="1" opacity=".8"/><text x="628" y="588" fill="{TAUPE}" font-size="8">{cols} COLUMNS · {rows} ROWS · ORIGINAL 0/1 CHARACTERS + CELL COLORS</text>'
- save("hero.svg",1200,630,"Hiten Borkar — original GitAscii artwork",body)
+ first_y=panel_y+52
+ body=f'<rect width="1200" height="630" rx="24" fill="{BG}"/><circle cx="895" cy="310" r="270" fill="{CYAN}" opacity=".045"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">INK / CYAN / SYSTEMS</text><rect x="{panel_x}" y="{panel_y}" width="{panel_w}" height="{panel_h}" rx="20" fill="#0A0E0F" stroke="{LINE}"/><text x="628" y="60" fill="{CYAN}" font-size="10" letter-spacing="2">GITASCII / SHADED ASCII EXPORT</text>'
+ for row_index,row in enumerate(ascii_rows):
+  body+=f'<text x="{ascii_x:.2f}" y="{first_y+row_index*line_h:.2f}" fill="#E8F4F8" font-family="JetBrains Mono,Consolas,monospace" font-size="{font_size}" xml:space="preserve">{escape(row)}</text>'
+ body+=f'<path d="M628 574 H1152" stroke="{LINE}" stroke-width="1" opacity=".8"/><text x="628" y="588" fill="{TAUPE}" font-size="8">{cols} COLUMNS · {rows} ROWS · ORIGINAL CHARACTER RAMP</text>'
+ save("hero.svg",1200,630,"Hiten Borkar — shaded ASCII portrait",body)
 
 def render_activity(total,days_count,active,current,best,busiest,monthly):
  keys=sorted(monthly)[-12:]
