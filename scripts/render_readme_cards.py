@@ -91,7 +91,9 @@ def render_heatmap(total,counts):
    body+=f'<text x="{x}" y="91" fill="{TAUPE}" font-size="9">{day.strftime("%b")}</text>'
   count=counts.get(day.isoformat(),0)
   level=0 if count==0 else min(4,1+int(4*count/maximum))
-  body+=f'<rect x="{x}" y="{y}" width="13" height="13" rx="3" fill="{palette[level]}"><title>{day.isoformat()}: {count} contributions</title></rect>'
+  day_label=day.strftime("%A, %B %-d, %Y")
+  contribution_label=f"{count} GitHub contribution" + ("" if count==1 else "s")
+  body+=f'<rect x="{x}" y="{y}" width="13" height="13" rx="3" fill="{palette[level]}" aria-label="{day_label}: {contribution_label}"><title>{day_label}: {contribution_label}</title></rect>'
  body+=f'<text x="1015" y="135" fill="{CYAN}" font-size="34" class="serif">{total:,}</text><text x="1015" y="155" fill="{TAUPE}" font-size="10">CONTRIBUTIONS</text><text x="1015" y="192" fill="{TAUPE}" font-size="10">LESS</text>'
  for j,color in enumerate(palette):
   body+=f'<rect x="{1050+j*22}" y="180" width="15" height="12" rx="3" fill="{color}"/>'
