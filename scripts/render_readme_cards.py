@@ -38,13 +38,13 @@ def main():
  save("activity.svg",1200,310,"Monthly contributions and streaks",body)
  bydate={x["date"]:x.get("contributionCount",0) for x in days}; today=date.today(); start=today-timedelta(days=363); start-=timedelta(days=start.weekday()); mx=max(bydate.values() or [1]) or 1
  pal=["#25282B","#39464A","#526B70","#398B9A",BLUE]
- body=f'<rect width="1200" height="190" rx="22" fill="{INK}"/><text x="38" y="42" fill="{BG}" font-size="23" class="serif">Consistency, in blue.</text><text x="38" y="65" fill="#BEB09A" font-size="12">DAILY CONTRIBUTIONS · LAST 52 WEEKS</text>'
+ body=f'<rect width="1200" height="190" rx="22" fill="{BG}"/><text x="38" y="42" fill="{BG}" font-size="23" class="serif">Consistency, in cyan.</text><text x="38" y="65" fill="#BEB09A" font-size="12">DAILY CONTRIBUTIONS · LAST 52 WEEKS</text>'
  for i in range(364):
   day=start+timedelta(days=i); n=bydate.get(day.isoformat(),0); level=0 if n==0 else min(4,1+int(4*n/mx)); body+=f'<rect x="{40+(i//7)*15}" y="{86+(i%7)*13}" width="10" height="9" rx="2" fill="{pal[level]}"/>'
  body+=f'<text x="1050" y="113" fill="{GOLD}" font-size="34" class="serif">{total:,}</text><text x="1050" y="136" fill="{BG}" font-size="11">TOTAL CONTRIBUTIONS</text>'
  save("heatmap.svg",1200,190,"GitHub contribution graph",body)
  def tile(file,label,sub,num,color):
-  b=f'<rect width="380" height="190" rx="20" fill="{color}"/><text x="28" y="42" fill="{BG if color==INK else INK}" font-size="12" letter-spacing="3">{escape(label)}</text><text x="28" y="91" fill="{BG if color==INK else INK}" font-size="27" class="serif">{escape(sub)}</text><text x="28" y="154" fill="{BG if color==INK else INK}" font-size="12">EXPLORE PROJECTS ↗</text><text x="335" y="166" text-anchor="end" fill="{GOLD if color==INK else INK}" font-size="44" class="serif">{num}</text>'
+  b=f'<rect width="380" height="190" rx="20" fill="{color}"/><text x="28" y="42" fill="{BG if color in (INK,GOLD) else INK}" font-size="12" letter-spacing="3">{escape(label)}</text><text x="28" y="91" fill="{BG if color==INK else INK}" font-size="27" class="serif">{escape(sub)}</text><text x="28" y="154" fill="{BG if color==INK else INK}" font-size="12">EXPLORE PROJECTS ↗</text><text x="335" y="166" text-anchor="end" fill="{BG if color==GOLD else GOLD if color==INK else INK}" font-size="44" class="serif">{num}</text>'
   save(file,380,190,label,b)
  tile("build.svg","BUILD","Software & systems","01",BG); tile("data.svg","DATA","ML & analytics","02",INK); tile("explore.svg","EXPLORE","Ideas & research","03",GOLD)
  def repo(file,title,desc,stack,num):
