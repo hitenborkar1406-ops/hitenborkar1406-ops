@@ -33,6 +33,10 @@
   <a href="https://github.com/hitenborkar1406-ops/VEHICLE-RENTAL-SYSTEM"><img src="./cards/repo-rental.svg" width="49%" alt="Vehicle Rental System"/></a>
 </div>
 
+## CODE DISTRIBUTION
+
+<img src="./cards/languages.svg" width="100%" alt="Live programming language distribution across featured repositories"/>
+
 ## TOOLKIT
 
 Python · C++ · JavaScript · React · FastAPI · Flask · Pandas · Scikit-learn · XGBoost · SQL · Git · Docker
