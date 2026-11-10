@@ -2,6 +2,12 @@ name: Refresh Profile Cards
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/refresh-profile-cards.yml"
+      - "scripts/render_readme_cards.py"
+      - "README.md"
   schedule:
     - cron: "17 2 * * *"
 
@@ -15,60 +21,97 @@ concurrency:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Check out profile repository
         uses: actions/checkout@v4
-
-      - name: Fetch public contribution calendar
+      - name: Fetch public GitHub contribution calendar and repository metrics
         env:
           GH_USERNAME: hitenborkar1406-ops
+          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p data
           python - <<'PY'
           import json, os, re, urllib.request
           from datetime import date, timedelta
+          from html.parser import HTMLParser
 
-          username = os.environ["GH_USERNAME"]
-          end = date.today()
-          start = end - timedelta(days=364)
-          url = f"https://github.com/users/{username}/contributions?from={start.isoformat()}&to={end.isoformat()}"
-          request = urllib.request.Request(url, headers={"User-Agent": "profile-readme-card-renderer"})
-          with urllib.request.urlopen(request, timeout=30) as response:
-              html = response.read().decode("utf-8")
+          class ContributionParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.rows=[]
+                  self.current=None
+              def handle_starttag(self, tag, attrs):
+                  attrs=dict(attrs)
+                  if tag=="td" and attrs.get("data-date"):
+                      self.current={"date":attrs["data-date"],"count":attrs.get("data-count"),"text":attrs.get("aria-label","")}
+              def handle_data(self, data):
+                  if self.current is not None:
+                      self.current["text"]+=" "+data
+              def handle_endtag(self, tag):
+                  if tag=="td" and self.current is not None:
+                      raw=self.current.get("count")
+                      if raw is None:
+                          match=re.search(r"(\d+)\s+contributions?",self.current["text"],re.I)
+                          raw=match.group(1) if match else ("0" if re.search(r"no contributions",self.current["text"],re.I) else None)
+                      if raw is not None:
+                          self.rows.append({"date":self.current["date"],"contributionCount":int(raw)})
+                      self.current=None
 
-          days = []
-          for tag in re.findall(r"<td\b[^>]*>", html):
-              date_match = re.search(r'data-date="([^"]+)"', tag)
-              count_match = re.search(r'data-count="(\d+)"', tag)
-              if date_match and count_match:
-                  days.append({
-                      "date": date_match.group(1),
-                      "contributionCount": int(count_match.group(1))
-                  })
+          username=os.environ["GH_USERNAME"]
+          end=date.today()
+          start=end-timedelta(days=364)
+          page=f"https://github.com/users/{username}/contributions?from={start.isoformat()}&to={end.isoformat()}"
+          request=urllib.request.Request(page,headers={"User-Agent":"Mozilla/5.0 profile-readme-renderer"})
+          with urllib.request.urlopen(request,timeout=40) as response:
+              html=response.read().decode("utf-8","replace")
+          parser=ContributionParser()
+          parser.feed(html)
+          days=sorted({d["date"]:d for d in parser.rows}.values(),key=lambda x:x["date"])
+          if len(days)<300:
+              sample=re.sub(r"\s+"," ",html[:700])
+              raise SystemExit(f"GitHub contribution page parser found only {len(days)} days (expected at least 300). Page sample: {sample}")
+          weeks=[{"contributionDays":days[i:i+7]} for i in range(0,len(days),7)]
+          total=sum(d["contributionCount"] for d in days)
+          with open("data/contributions.json","w",encoding="utf-8") as out:
+              json.dump({"total":total,"weeks":weeks},out,indent=2)
+          print(f"Fetched {len(days)} contribution days and {total} contributions.")
 
-          if len(days) < 300:
-              raise SystemExit(f"Expected about 365 contribution days, found {len(days)}. GitHub page format may have changed.")
-
-          weeks = [{"contributionDays": [day]} for day in days]
-          total = sum(day["contributionCount"] for day in days)
-          with open("data/contributions.json", "w", encoding="utf-8") as output:
-              json.dump({"total": total, "weeks": weeks}, output, indent=2)
-          print(f"Fetched {len(days)} days and {total} contributions for {username}.")
+          token=os.environ.get("GH_TOKEN","")
+          headers={"User-Agent":"profile-readme-renderer","Accept":"application/vnd.github+json"}
+          if token: headers["Authorization"]="Bearer "+token
+          repo_names=["SMART_TRAFFIC_MANAGEMENT_SYSTEM","IPL_CRUNCH","PROMPTWARS","VEHICLE-RENTAL-SYSTEM"]
+          repo_data={}
+          def api(url):
+              req=urllib.request.Request(url,headers=headers)
+              with urllib.request.urlopen(req,timeout=30) as resp:
+                  return json.load(resp)
+          for name in repo_names:
+              base=f"https://api.github.com/repos/{username}/{name}"
+              try:
+                  meta=api(base)
+                  try: languages=api(base+"/languages")
+                  except Exception as e:
+                      print(f"Language stats unavailable for {name}: {e}")
+                      languages={}
+                  meta["languages"]=languages
+                  repo_data[name]=meta
+                  print(f"Fetched metrics for {name}: {meta.get('stargazers_count',0)} stars, {meta.get('forks_count',0)} forks.")
+              except Exception as e:
+                  print(f"Repository metrics unavailable for {name}: {e}")
+          with open("data/repos.json","w",encoding="utf-8") as out:
+              json.dump(repo_data,out,indent=2)
           PY
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Render SVG cards
+      - name: Render SVG analytics cards
         run: python scripts/render_readme_cards.py
-
-      - name: Commit refreshed cards
+      - name: Commit refreshed cards and data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cards/ data/contributions.json
-          git diff --cached --quiet || git commit -m "chore: refresh animated profile cards"
+          git add cards/ data/contributions.json data/repos.json
+          git diff --cached --quiet || git commit -m "chore: refresh profile analytics"
           git push
