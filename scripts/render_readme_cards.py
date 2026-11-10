@@ -43,7 +43,7 @@ def main():
  body+=f'<text x="1050" y="113" fill="{GOLD}" font-size="34" class="serif">{total:,}</text><text x="1050" y="136" fill="{BG}" font-size="11">TOTAL CONTRIBUTIONS</text>'
  save("heatmap.svg",1200,190,"GitHub contribution graph",body)
  def tile(file,label,sub,num,color):
-  b=f'<rect width="380" height="190" rx="20" fill="{color}"/><text x="28" y="42" fill="{BG if color==INK else INK}" font-size="12" letter-spacing="3">{label}</text><text x="28" y="91" fill="{BG if color==INK else INK}" font-size="27" class="serif">{sub}</text><text x="28" y="154" fill="{BG if color==INK else INK}" font-size="12">EXPLORE PROJECTS ↗</text><text x="335" y="166" text-anchor="end" fill="{GOLD if color==INK else INK}" font-size="44" class="serif">{num}</text>'
+  b=f'<rect width="380" height="190" rx="20" fill="{color}"/><text x="28" y="42" fill="{BG if color==INK else INK}" font-size="12" letter-spacing="3">{escape(label)}</text><text x="28" y="91" fill="{BG if color==INK else INK}" font-size="27" class="serif">{escape(sub)}</text><text x="28" y="154" fill="{BG if color==INK else INK}" font-size="12">EXPLORE PROJECTS ↗</text><text x="335" y="166" text-anchor="end" fill="{GOLD if color==INK else INK}" font-size="44" class="serif">{num}</text>'
   save(file,380,190,label,b)
  tile("build.svg","BUILD","Software & systems","01",BG); tile("data.svg","DATA","ML & analytics","02",INK); tile("explore.svg","EXPLORE","Ideas & research","03",GOLD)
  def repo(file,title,desc,stack,num):
