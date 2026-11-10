@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json
+import json, base64
 from pathlib import Path
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -30,26 +30,14 @@ def activity_stats(days):
  for d in days: monthly[d["date"][:7]]+=int(d.get("contributionCount",0))
  return counts,len(active),current,best,busiest,monthly
 def render_hero(total):
- ascii_rows=ASCII_ART.read_text(encoding="utf-8").splitlines()
- if not ascii_rows:
-  raise ValueError("data/ascii_art.txt is empty")
- cols=max(len(line) for line in ascii_rows)
- rows=len(ascii_rows)
- if rows!=101 or cols!=202:
-  raise ValueError(f"Expected the uploaded 202x101 ASCII artwork, got {cols}x{rows}")
+ photo_path=ROOT/"assets"/"hero-anime.jpg"
+ if not photo_path.exists():
+  raise FileNotFoundError(f"Missing hero portrait image: {photo_path}")
+ photo_b64=base64.b64encode(photo_path.read_bytes()).decode("ascii")
+ image_x,image_y,image_size=625,51,530
  panel_x,panel_y,panel_w,panel_h=605,32,570,566
- font_size=4.2
- cell_w=font_size*0.60
- line_h=font_size*1.20
- ascii_width=cols*cell_w
- ascii_height=rows*line_h
- ascii_x=panel_x+(panel_w-ascii_width)/2
- first_y=panel_y+52
- body=f'<rect width="1200" height="630" rx="24" fill="{BG}"/><circle cx="895" cy="310" r="270" fill="{CYAN}" opacity=".045"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">INK / CYAN / SYSTEMS</text><rect x="{panel_x}" y="{panel_y}" width="{panel_w}" height="{panel_h}" rx="20" fill="#0A0E0F" stroke="{LINE}"/><text x="628" y="60" fill="{CYAN}" font-size="10" letter-spacing="2">GITASCII / SHADED ASCII EXPORT</text>'
- for row_index,row in enumerate(ascii_rows):
-  body+=f'<text x="{ascii_x:.2f}" y="{first_y+row_index*line_h:.2f}" fill="#E8F4F8" font-family="JetBrains Mono,Consolas,monospace" font-size="{font_size}" xml:space="preserve">{escape(row)}</text>'
- body+=f'<path d="M628 574 H1152" stroke="{LINE}" stroke-width="1" opacity=".8"/><text x="628" y="588" fill="{TAUPE}" font-size="8">{cols} COLUMNS · {rows} ROWS · ORIGINAL CHARACTER RAMP</text>'
- save("hero.svg",1200,630,"Hiten Borkar — shaded ASCII portrait",body)
+ body=f'<defs><clipPath id="portraitClip"><rect x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" rx="16"/></clipPath></defs><rect width="1200" height="630" rx="24" fill="{BG}"/><circle cx="895" cy="310" r="270" fill="{CYAN}" opacity=".045"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">INK / CYAN / SYSTEMS</text><rect x="{panel_x}" y="{panel_y}" width="{panel_w}" height="{panel_h}" rx="20" fill="{PANEL}" stroke="{LINE}"/><image x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#portraitClip)" href="data:image/jpeg;base64,{photo_b64}"/><rect x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" rx="16" fill="none" stroke="{CYAN}" stroke-opacity=".35" stroke-width="1.5"/>'
+ save("hero.svg",1200,630,"Hiten Borkar — anime portrait and engineering portfolio",body)
 
 def render_activity(total,days_count,active,current,best,busiest,monthly):
  keys=sorted(monthly)[-12:]
