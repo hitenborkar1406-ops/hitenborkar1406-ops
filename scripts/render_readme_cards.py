@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from xml.sax.saxutils import escape
 
 ROOT=Path(__file__).resolve().parents[1]; OUT=ROOT/"cards"; DATA=ROOT/"data"/"contributions.json"; REPOS=ROOT/"data"/"repos.json"
-BG,INK,CYAN,BLUE,TAUPE,LINE="#0B0C0E","#F0E8DA","#63D6E2","#398B9A","#BEB09A","#4A4640"; PANEL="#17191D"
+BG,INK,CYAN,BLUE,TAUPE,LINE="#0B1110","#E7EFEB","#55C9AE","#2F8F7C","#91A39B","#2D3B36"; PANEL="#17221F"
 ASCII_ART=ROOT/"data"/"ascii_art.txt"
 def svg(w,h,title,body):
  return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{escape(title)}"><title>{escape(title)}</title><defs><style>text{{font-family:Inter,Arial,sans-serif}}.serif{{font-family:Georgia,serif}}@keyframes rise{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:translateY(0)}}}}@keyframes pulse{{0%,100%{{opacity:.35}}50%{{opacity:1}}}}@keyframes reveal{{from{{opacity:0}}to{{opacity:1}}}}.portrait-row{{opacity:1}}.enter{{animation:rise .8s ease both}}.pulse{{animation:pulse 2.8s ease-in-out infinite}}@media(prefers-reduced-motion:reduce){{*{{animation:none!important;opacity:1!important}}}}</style></defs>{body}</svg>'''
@@ -35,7 +35,7 @@ def render_hero(total):
   raise FileNotFoundError(f"Missing hero portrait image: {photo_path}")
  photo_b64=base64.b64encode(photo_path.read_bytes()).decode("ascii")
  image_x,image_y,image_size=690,105,420
- body=f'<defs><clipPath id="portraitClip"><rect x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" rx="8"/></clipPath></defs><rect width="1200" height="630" rx="24" fill="{BG}"/><circle cx="895" cy="310" r="270" fill="{CYAN}" opacity=".045"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">INK / CYAN / SYSTEMS</text><image x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#portraitClip)" href="data:image/webp;base64,{photo_b64}"/>'
+ body=f'<defs><clipPath id="portraitClip"><rect x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" rx="8"/></clipPath></defs><rect width="1200" height="630" rx="24" fill="{BG}"/><circle cx="895" cy="310" r="270" fill="{CYAN}" opacity=".045"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">OBSIDIAN JADE / SYSTEMS</text><image x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#portraitClip)" href="data:image/webp;base64,{photo_b64}"/>'
  save("hero.svg",1200,630,"Hiten Borkar — anime portrait and engineering portfolio",body)
 
 def render_activity(total,days_count,active,current,best,busiest,monthly):
@@ -51,7 +51,7 @@ def render_activity(total,days_count,active,current,best,busiest,monthly):
   x=58+i*63
   height=0 if maximum==0 else 190*value/maximum
   y=baseline-height
-  fill="#315BFF" if key==best_month and value>0 else "#6E747D"
+  fill=CYAN if key==best_month and value>0 else "#52665F"
   body+=f'<rect x="{x}" y="{y:.1f}" width="48" height="{height:.1f}" rx="6" fill="{fill}"><animate attributeName="height" from="0" to="{height:.1f}" dur=".7s" begin="{i*.04:.2f}s" fill="freeze"/></rect>'
   if key==best_month and value>0:
    body+=f'<text x="{x+24}" y="{y-12:.1f}" text-anchor="middle" fill="{CYAN}" font-size="13">{value:,}</text>'
@@ -77,8 +77,8 @@ def render_heatmap(total,counts):
  day_count=(today-start).days+1
  columns=(day_count+6)//7
  maximum=max(counts.values() or [1]) or 1
- palette=["#25282B","#17348E","#2148D8","#315BFF","#9EB5FF"]
- body=f'<rect width="1200" height="270" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="48" fill="{INK}" font-size="30" class="serif">Every day, <tspan fill="#315BFF" font-style="italic">in blue.</tspan></text><text x="1015" y="45" fill="{TAUPE}" font-size="11" letter-spacing="2">REFRESHED DAILY</text><text x="42" y="77" fill="{TAUPE}" font-size="10" letter-spacing="1">LAST 52 WEEKS · DAILY CONTRIBUTIONS</text>'
+ palette=["#202C28","#164B40","#236B5B","#379A81","#A1E3D2"]
+ body=f'<rect width="1200" height="270" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="48" fill="{INK}" font-size="30" class="serif">Every day, <tspan fill="{CYAN}" font-style="italic">in jade.</tspan></text><text x="1015" y="45" fill="{TAUPE}" font-size="11" letter-spacing="2">REFRESHED DAILY</text><text x="42" y="77" fill="{TAUPE}" font-size="10" letter-spacing="1">LAST 52 WEEKS · DAILY CONTRIBUTIONS</text>'
  month_seen=set()
  for offset in range(day_count):
   day=start+timedelta(days=offset)
@@ -104,7 +104,7 @@ def render_languages(repos):
   for language,amount in repo.get("languages",{}).items(): totals[language]+=int(amount)
  top=sorted(totals.items(),key=lambda x:x[1],reverse=True)[:6]; total_bytes=sum(totals.values()) or 1
  body=f'<rect width="1200" height="225" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="43" fill="{INK}" font-size="25" class="serif">The code behind the work</text><text x="42" y="69" fill="{TAUPE}" font-size="11" letter-spacing="1">LANGUAGE DISTRIBUTION · FEATURED PUBLIC REPOSITORIES</text>'
- colors=[CYAN,"#BEB09A","#8D9AA4","#68727D","#A7B8B4","#59636B"]
+ colors=[CYAN,CYAN,CYAN,CYAN,CYAN,CYAN]
  for i,(language,amount) in enumerate(top):
   y=104+i*19; width=560*amount/total_bytes
   body+=f'<text x="42" y="{y+10}" fill="{INK}" font-size="11">{escape(language)}</text><rect x="170" y="{y}" width="560" height="10" rx="5" fill="#25282B"/><rect x="170" y="{y}" width="{width:.1f}" height="10" rx="5" fill="{colors[i]}"/><text x="750" y="{y+10}" fill="{TAUPE}" font-size="10">{100*amount/total_bytes:.1f}%</text>'
