@@ -7,6 +7,21 @@ from xml.sax.saxutils import escape
 ROOT=Path(__file__).resolve().parents[1]; OUT=ROOT/"cards"; DATA=ROOT/"data"/"contributions.json"
 BG,INK,GOLD,BLUE,MUTED,LINE="#0B0C0E","#F0E8DA","#63D6E2","#63D6E2","#BEB09A","#4A4640"
 PANEL="#17191D"
+PORTRAIT_ASCII=[
+"       .-==========-.",
+"     .'  .------.  '.",
+"    /   /  /\\   \\   \\", 
+"   |   |  /  \\   |   |",
+"   |   | |    |  |   |",
+"   |   | | <> |  |   |",
+"   |   |  \\__/   |   |",
+"    \\   \\______/   /",
+"     '.          .'",
+"       \\  ____  /",
+"        \\______/ ",
+"       /  /  \\  \\", 
+"      /__/    \\__\\",
+"]
 def svg(w,h,title,body):
  return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{escape(title)}"><title>{escape(title)}</title><defs><style>text{{font-family:Inter,Arial,sans-serif}}.serif{{font-family:Georgia,serif}}@keyframes rise{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:translateY(0)}}}}.enter{{animation:rise .8s ease both}}@media(prefers-reduced-motion:reduce){{*{{animation:none!important}}}}</style></defs>{body}</svg>'''
 def save(name,w,h,title,body):
@@ -47,7 +62,9 @@ def main():
  body+=f'<text x="1050" y="113" fill="{GOLD}" font-size="34" class="serif">{total:,}</text><text x="1050" y="136" fill="{BG}" font-size="11">TOTAL CONTRIBUTIONS</text>'
  save("heatmap.svg",1200,190,"GitHub contribution graph",body)
  def tile(file,label,sub,num,color):
-  b=f'<rect width="380" height="190" rx="20" fill="{color}"/><text x="28" y="42" fill="{BG if color in (INK,GOLD) else INK}" font-size="12" letter-spacing="3">{escape(label)}</text><text x="28" y="91" fill="{BG if color==INK else INK}" font-size="27" class="serif">{escape(sub)}</text><text x="28" y="154" fill="{BG if color==INK else INK}" font-size="12">EXPLORE PROJECTS ↗</text><text x="335" y="166" text-anchor="end" fill="{BG if color==GOLD else GOLD if color==INK else INK}" font-size="44" class="serif">{num}</text>'
+  fg = BG if color in (INK,GOLD) else INK
+  accent = GOLD if color==BG else BLUE
+  b=f'<defs><linearGradient id="tilebg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{color}"/><stop offset="1" stop-color="{PANEL if color==BG else "#D7CBBB" if color==INK else "#279EAD"}"/></linearGradient></defs><rect width="380" height="190" rx="20" fill="url(#tilebg)"/><path d="M24 14 H356" stroke="{accent}" stroke-width="2" opacity=".8"/><text x="28" y="42" fill="{fg}" font-size="12" letter-spacing="3">{escape(label)}</text><text x="28" y="91" fill="{fg}" font-size="27" class="serif">{escape(sub)}</text><text x="28" y="154" fill="{fg}" font-size="12">EXPLORE PROJECTS ↗</text><text x="335" y="166" text-anchor="end" fill="{accent if color!=GOLD else INK}" font-size="44" class="serif">{num}</text>'
   save(file,380,190,label,b)
  tile("build.svg","BUILD","Software & systems","01",BG); tile("data.svg","DATA","ML & analytics","02",INK); tile("explore.svg","EXPLORE","Ideas & research","03",GOLD)
  def repo(file,title,desc,stack,num):
