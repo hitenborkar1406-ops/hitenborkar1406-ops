@@ -14,28 +14,28 @@
 ## THE WORK
 
 <div align="center">
-  <a href="https://github.com/hitenborkar1406-ops/SMART_TRAFFIC_MANAGEMENT_SYSTEM"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/build.svg" width="32%" alt="Build — Software and systems"/></a>
-  <a href="https://github.com/hitenborkar1406-ops/IPL_CRUNCH"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/data.svg" width="32%" alt="Data — ML and analytics"/></a>
-  <a href="https://github.com/hitenborkar1406-ops/PROMPTWARS"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/explore.svg" width="32%" alt="Explore — Ideas and research"/></a>
+  <a href="https://github.com/hitenborkar1406-ops/SMART_TRAFFIC_MANAGEMENT_SYSTEM"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/build.svg?v=obsidian-jade-20261110" width="32%" alt="Build — Software and systems"/></a>
+  <a href="https://github.com/hitenborkar1406-ops/IPL_CRUNCH"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/data.svg?v=obsidian-jade-20261110" width="32%" alt="Data — ML and analytics"/></a>
+  <a href="https://github.com/hitenborkar1406-ops/PROMPTWARS"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/explore.svg?v=obsidian-jade-20261110" width="32%" alt="Explore — Ideas and research"/></a>
 </div>
 
 ## GITHUB ACTIVITY
 
-<img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/activity.svg" width="100%" alt="Monthly contributions, streaks, active days and busiest day"/>
-<img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/heatmap.svg" width="100%" alt="Daily GitHub contribution heatmap in jade"/>
+<img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/activity.svg?v=obsidian-jade-20261110" width="100%" alt="Monthly contributions, streaks, active days and busiest day"/>
+<img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/heatmap.svg?v=obsidian-jade-20261110" width="100%" alt="Daily GitHub contribution heatmap in jade"/>
 
 ## SELECTED PROJECTS
 
 <div align="center">
-  <a href="https://github.com/hitenborkar1406-ops/SMART_TRAFFIC_MANAGEMENT_SYSTEM"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/repo-traffic.svg" width="49%" alt="Smart Traffic Management"/></a>
-  <a href="https://github.com/hitenborkar1406-ops/IPL_CRUNCH"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/repo-ipl.svg" width="49%" alt="IPL Crunch"/></a>
-  <a href="https://github.com/hitenborkar1406-ops/PROMPTWARS"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/repo-blindspot.svg" width="49%" alt="The Blind Spot"/></a>
-  <a href="https://github.com/hitenborkar1406-ops/VEHICLE-RENTAL-SYSTEM"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/repo-rental.svg" width="49%" alt="Vehicle Rental System"/></a>
+  <a href="https://github.com/hitenborkar1406-ops/SMART_TRAFFIC_MANAGEMENT_SYSTEM"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/repo-traffic.svg?v=obsidian-jade-20261110" width="49%" alt="Smart Traffic Management"/></a>
+  <a href="https://github.com/hitenborkar1406-ops/IPL_CRUNCH"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/repo-ipl.svg?v=obsidian-jade-20261110" width="49%" alt="IPL Crunch"/></a>
+  <a href="https://github.com/hitenborkar1406-ops/PROMPTWARS"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/repo-blindspot.svg?v=obsidian-jade-20261110" width="49%" alt="The Blind Spot"/></a>
+  <a href="https://github.com/hitenborkar1406-ops/VEHICLE-RENTAL-SYSTEM"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/repo-rental.svg?v=obsidian-jade-20261110" width="49%" alt="Vehicle Rental System"/></a>
 </div>
 
 ## CODE DISTRIBUTION
 
-<img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/languages.svg" width="100%" alt="Live programming language distribution across featured repositories"/>
+<img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/languages.svg?v=obsidian-jade-20261110" width="100%" alt="Live programming language distribution across featured repositories"/>
 
 ## TOOLKIT
 
