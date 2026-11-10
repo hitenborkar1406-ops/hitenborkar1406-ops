@@ -34,39 +34,66 @@ def render_hero(total):
  for i,line in enumerate(PORTRAIT_ASCII): body+=f'<text x="870" y="{83+i*15}" fill="{CYAN if i in (5,6) else INK}" font-family="monospace" font-size="12" xml:space="preserve">{escape(line)}</text>'
  body+=f'<path d="M880 171 Q932 145 984 171" fill="none" stroke="{CYAN}" stroke-width="2.5" class="pulse"/><text x="868" y="290" fill="{TAUPE}" font-size="10">INK / CYAN / SYSTEMS</text>'
  save("hero.svg",1200,350,"Hiten Borkar — engineering portfolio",body)
-def render_activity(total,active,current,best,busiest,monthly):
+def render_activity(total,days_count,active,current,best,busiest,monthly):
  keys=sorted(monthly)[-12:]
  if not keys: keys=[(date.today()-timedelta(days=30*i)).strftime("%Y-%m") for i in range(11,-1,-1)]
- values=[monthly.get(k,0) for k in keys]; maximum=max(values or [1]) or 1
- body=f'<rect width="1200" height="330" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="44" fill="{INK}" font-size="26" class="serif">A year in motion</text><text x="42" y="70" fill="{TAUPE}" font-size="12" letter-spacing="1">MONTHLY CONTRIBUTIONS · LAST 12 MONTHS</text><path d="M42 256 H850" stroke="{LINE}" stroke-width="1"/>'
+ values=[monthly.get(k,0) for k in keys]
+ maximum=max(values or [1]) or 1
+ best_month=max(keys,key=lambda k:monthly.get(k,0))
+ best_value=monthly.get(best_month,0)
+ body=f'<rect width="1200" height="430" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="54" y="52" fill="{TAUPE}" font-size="13" letter-spacing="2">THE LAST 12 MONTHS ON GITHUB</text><text x="54" y="132" fill="{INK}" font-size="65" class="serif">{total:,}</text><text x="258" y="132" fill="{CYAN}" font-size="65" font-style="italic" class="serif">contributions</text><path d="M835 55 V385" stroke="{LINE}" stroke-width="1"/>'
+ baseline=342
  for i,(key,value) in enumerate(zip(keys,values)):
-  x=48+i*67; height=142*value/maximum; y=255-height; fill=CYAN if value==maximum and value>0 else "#59636B"
-  body+=f'<rect x="{x}" y="{y:.1f}" width="42" height="{height:.1f}" rx="6" fill="{fill}"><animate attributeName="height" from="0" to="{height:.1f}" dur=".65s" begin="{i*.045:.2f}s" fill="freeze"/></rect>'
-  if value: body+=f'<text x="{x+21}" y="{y-8:.1f}" text-anchor="middle" fill="{INK}" font-size="10">{value}</text>'
-  body+=f'<text x="{x+21}" y="278" text-anchor="middle" fill="{TAUPE}" font-size="10">{datetime.strptime(key,"%Y-%m").strftime("%b")}</text>'
+  x=58+i*63
+  height=0 if maximum==0 else 190*value/maximum
+  y=baseline-height
+  fill="#315BFF" if key==best_month and value>0 else "#6E747D"
+  body+=f'<rect x="{x}" y="{y:.1f}" width="48" height="{height:.1f}" rx="6" fill="{fill}"><animate attributeName="height" from="0" to="{height:.1f}" dur=".7s" begin="{i*.04:.2f}s" fill="freeze"/></rect>'
+  if key==best_month and value>0:
+   body+=f'<text x="{x+24}" y="{y-12:.1f}" text-anchor="middle" fill="{CYAN}" font-size="13">{value:,}</text>'
+  body+=f'<text x="{x+24}" y="374" text-anchor="middle" fill="{TAUPE}" font-size="12">{datetime.strptime(key,"%Y-%m").strftime("%b")}</text>'
  busy_date=busiest.get("date","—")
  try: busy_date=datetime.strptime(busy_date,"%Y-%m-%d").strftime("%d %b")
- except ValueError: pass
+ except (ValueError,TypeError): pass
  busy_count=int(busiest.get("contributionCount",0))
- metrics=[(900,100,str(total),"CONTRIBUTIONS"),(1045,100,str(active),"ACTIVE DAYS"),(900,181,str(current),"CURRENT STREAK"),(1045,181,str(best),"BEST STREAK"),(900,253,str(busy_count),f"BUSIEST DAY · {busy_date}")]
- for x,y,value,label in metrics: body+=f'<text x="{x}" y="{y}" fill="{CYAN}" font-size="31" class="serif">{escape(value)}</text><text x="{x}" y="{y+19}" fill="{TAUPE}" font-size="10">{escape(label)}</text>'
- body+=f'<text x="42" y="310" fill="{TAUPE}" font-size="10">PEAK MONTH · {escape(max(keys,key=lambda k:monthly.get(k,0)))} · {max(values or [0])} CONTRIBUTIONS</text>'
- save("activity.svg",1200,330,"GitHub monthly activity and contribution analysis",body)
+ right=[
+  (875,130,str(current),"CURRENT STREAK · AND LONGEST"),
+  (875,252,f"{active} / {days_count}","DAYS WITH A CONTRIBUTION"),
+  (875,365,str(busy_count),f"BUSIEST DAY · {busy_date}")
+ ]
+ for x,y,value,label in right:
+  body+=f'<text x="{x}" y="{y}" fill="{INK}" font-size="48" class="serif">{escape(value)}</text><text x="{x}" y="{y+23}" fill="{TAUPE}" font-size="12">{escape(label)}</text>'
+ body+=f'<text x="54" y="410" fill="{TAUPE}" font-size="10" letter-spacing="1">PEAK MONTH · {datetime.strptime(best_month,"%Y-%m").strftime("%B %Y").upper()} · {best_value:,} CONTRIBUTIONS</text>'
+ save("activity.svg",1200,430,"GitHub activity over the last 12 months",body)
+
 def render_heatmap(total,counts):
- start=date.today()-timedelta(days=363); start-=timedelta(days=start.weekday()); maximum=max(counts.values() or [1]) or 1
- palette=["#25282B","#39464A","#526B70","#398B9A",CYAN]
- body=f'<rect width="1200" height="205" rx="22" fill="{BG}" stroke="{LINE}"/><text x="38" y="37" fill="{INK}" font-size="23" class="serif">Consistency, in cyan.</text><text x="38" y="58" fill="{TAUPE}" font-size="11" letter-spacing="1">DAILY CONTRIBUTIONS · LAST 52 WEEKS</text>'
+ today=date.today()
+ start=today-timedelta(days=363)
+ start-=timedelta(days=(start.weekday()+1)%7)
+ day_count=(today-start).days+1
+ columns=(day_count+6)//7
+ maximum=max(counts.values() or [1]) or 1
+ palette=["#25282B","#17348E","#2148D8","#315BFF","#9EB5FF"]
+ body=f'<rect width="1200" height="270" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="48" fill="{INK}" font-size="30" class="serif">Every day, <tspan fill="#315BFF" font-style="italic">in blue.</tspan></text><text x="1015" y="45" fill="{TAUPE}" font-size="11" letter-spacing="2">REFRESHED DAILY</text><text x="42" y="77" fill="{TAUPE}" font-size="10" letter-spacing="1">LAST 52 WEEKS · DAILY CONTRIBUTIONS</text>'
  month_seen=set()
- for i in range(364):
-  day=start+timedelta(days=i); col=i//7
-  if day.day<=7 and day.month not in month_seen:
-   month_seen.add(day.month); body+=f'<text x="{40+col*15}" y="78" fill="{TAUPE}" font-size="9">{day.strftime("%b")}</text>'
-  count=counts.get(day.isoformat(),0); level=0 if count==0 else min(4,1+int(4*count/maximum))
-  body+=f'<rect x="{40+col*15}" y="{86+(i%7)*13}" width="10" height="9" rx="2" fill="{palette[level]}"><title>{day.isoformat()}: {count} contributions</title></rect>'
- body+=f'<text x="1038" y="117" fill="{INK}" font-size="31" class="serif">{total:,}</text><text x="1038" y="137" fill="{TAUPE}" font-size="10">IN THE LAST YEAR</text>'
- for j,color in enumerate(palette): body+=f'<rect x="{1038+j*22}" y="157" width="14" height="10" rx="2" fill="{color}"/>'
- body+=f'<text x="1038" y="183" fill="{TAUPE}" font-size="9">LESS</text><text x="1132" y="183" fill="{TAUPE}" font-size="9">MORE</text>'
- save("heatmap.svg",1200,205,"GitHub contribution heatmap",body)
+ for offset in range(day_count):
+  day=start+timedelta(days=offset)
+  col=offset//7
+  row=(day.weekday()+1)%7
+  x=42+col*17
+  y=96+row*17
+  if day.day==1 and day.month not in month_seen:
+   month_seen.add(day.month)
+   body+=f'<text x="{x}" y="91" fill="{TAUPE}" font-size="9">{day.strftime("%b")}</text>'
+  count=counts.get(day.isoformat(),0)
+  level=0 if count==0 else min(4,1+int(4*count/maximum))
+  body+=f'<rect x="{x}" y="{y}" width="13" height="13" rx="3" fill="{palette[level]}"><title>{day.isoformat()}: {count} contributions</title></rect>'
+ body+=f'<text x="1015" y="135" fill="{CYAN}" font-size="34" class="serif">{total:,}</text><text x="1015" y="155" fill="{TAUPE}" font-size="10">CONTRIBUTIONS</text><text x="1015" y="192" fill="{TAUPE}" font-size="10">LESS</text>'
+ for j,color in enumerate(palette):
+  body+=f'<rect x="{1050+j*22}" y="180" width="15" height="12" rx="3" fill="{color}"/>'
+ body+=f'<text x="1162" y="192" fill="{TAUPE}" font-size="10">MORE</text><text x="42" y="252" fill="{TAUPE}" font-size="10">SUNDAY</text><text x="122" y="252" fill="{TAUPE}" font-size="10">MONDAY → SATURDAY</text>'
+ save("heatmap.svg",1200,270,"GitHub contribution heatmap — refreshed daily",body)
+
 def render_languages(repos):
  totals=defaultdict(int)
  for repo in repos.values():
@@ -93,7 +120,7 @@ def render_repo_cards(repos):
   save(file,560,170,title,body)
 def main():
  contrib=read_json(DATA,{"total":0,"weeks":[]}); days=flatten(contrib); counts,active,current,best,busiest,monthly=activity_stats(days); total=int(contrib.get("total",sum(counts.values()))); repos=read_json(REPOS,{})
- render_hero(total); render_activity(total,active,current,best,busiest,monthly); render_heatmap(total,counts); render_languages(repos)
+ render_hero(total); render_activity(total,len(days),active,current,best,busiest,monthly); render_heatmap(total,counts); render_languages(repos)
  render_tile("build.svg","BUILD","Software & systems","01",BG,PANEL,INK)
  render_tile("data.svg","DATA","ML & analytics","02","#F0E8DA","#D7CBBB",BG)
  render_tile("explore.svg","EXPLORE","Ideas & research","03",CYAN,"#279EAD",BG)
