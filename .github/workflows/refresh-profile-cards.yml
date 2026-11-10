@@ -1,0 +1,74 @@
+name: Refresh Profile Cards
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-profile-cards
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out profile repository
+        uses: actions/checkout@v4
+
+      - name: Fetch public contribution calendar
+        env:
+          GH_USERNAME: hitenborkar1406-ops
+        run: |
+          mkdir -p data
+          python - <<'PY'
+          import json, os, re, urllib.request
+          from datetime import date, timedelta
+
+          username = os.environ["GH_USERNAME"]
+          end = date.today()
+          start = end - timedelta(days=364)
+          url = f"https://github.com/users/{username}/contributions?from={start.isoformat()}&to={end.isoformat()}"
+          request = urllib.request.Request(url, headers={"User-Agent": "profile-readme-card-renderer"})
+          with urllib.request.urlopen(request, timeout=30) as response:
+              html = response.read().decode("utf-8")
+
+          days = []
+          for tag in re.findall(r"<td\b[^>]*>", html):
+              date_match = re.search(r'data-date="([^"]+)"', tag)
+              count_match = re.search(r'data-count="(\d+)"', tag)
+              if date_match and count_match:
+                  days.append({
+                      "date": date_match.group(1),
+                      "contributionCount": int(count_match.group(1))
+                  })
+
+          if len(days) < 300:
+              raise SystemExit(f"Expected about 365 contribution days, found {len(days)}. GitHub page format may have changed.")
+
+          weeks = [{"contributionDays": [day]} for day in days]
+          total = sum(day["contributionCount"] for day in days)
+          with open("data/contributions.json", "w", encoding="utf-8") as output:
+              json.dump({"total": total, "weeks": weeks}, output, indent=2)
+          print(f"Fetched {len(days)} days and {total} contributions for {username}.")
+          PY
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Render SVG cards
+        run: python scripts/render_readme_cards.py
+
+      - name: Commit refreshed cards
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cards/ data/contributions.json
+          git diff --cached --quiet || git commit -m "chore: refresh animated profile cards"
+          git push
