@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/hero.svg?v=bcd1225" width="100%" alt="Hiten Borkar — Building systems that solve real problems"/>
+<img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/hero.svg?v=portrait-clean-20261110" width="100%" alt="Hiten Borkar — Building systems that solve real problems"/>
 
 <p>
   <a href="https://hitenborkar1406-ops.github.io/Portfolio/">PORTFOLIO</a> ·
