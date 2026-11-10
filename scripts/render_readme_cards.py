@@ -7,7 +7,7 @@ from xml.sax.saxutils import escape
 
 ROOT=Path(__file__).resolve().parents[1]; OUT=ROOT/"cards"; DATA=ROOT/"data"/"contributions.json"; REPOS=ROOT/"data"/"repos.json"
 BG,INK,CYAN,BLUE,TAUPE,LINE="#0B0C0E","#F0E8DA","#63D6E2","#398B9A","#BEB09A","#4A4640"; PANEL="#17191D"
-PORTRAIT_ASCII=["       .-==========-.","     .'  .------.  '.","    /   /  /\\\\   \\\\   \\\\","   |   |  /  \\\\   |   |","   |   | |    |  |   |","   |   | | <> |  |   |","   |   |  \\\\__/   |   |","    \\\\   \\\\______/   /","     '.          .'","       \\\\  ____  /","        \\\\______/","       /  /  \\\\  \\\\","      /__/    \\\\__\\\\"]
+PORTRAIT=ROOT/"data"/"portrait.json"
 def svg(w,h,title,body):
  return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{escape(title)}"><title>{escape(title)}</title><defs><style>text{{font-family:Inter,Arial,sans-serif}}.serif{{font-family:Georgia,serif}}@keyframes rise{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:translateY(0)}}}}@keyframes pulse{{0%,100%{{opacity:.35}}50%{{opacity:1}}}}.enter{{animation:rise .8s ease both}}.pulse{{animation:pulse 2.8s ease-in-out infinite}}@media(prefers-reduced-motion:reduce){{*{{animation:none!important}}}}</style></defs>{body}</svg>'''
 def save(name,w,h,title,body):
@@ -30,10 +30,37 @@ def activity_stats(days):
  for d in days: monthly[d["date"][:7]]+=int(d.get("contributionCount",0))
  return counts,len(active),current,best,busiest,monthly
 def render_hero(total):
- body=f'<rect width="1200" height="350" rx="24" fill="{BG}"/><circle cx="1005" cy="172" r="132" fill="{CYAN}" opacity=".10"/><text x="58" y="55" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="139" fill="{INK}" font-size="66" class="serif enter">Building systems</text><text x="58" y="210" fill="{INK}" font-size="66" class="serif enter">that solve real problems.</text><text x="61" y="258" fill="{TAUPE}" font-size="18">Computer Science Engineer · Full-stack · Applied ML · Data</text><path d="M60 292 H740" stroke="{LINE}" stroke-width="1"/><text x="60" y="321" fill="{CYAN}" font-size="12" letter-spacing="2">GITHUB CONTRIBUTIONS · {total:,} IN THE LAST YEAR</text><rect x="850" y="27" width="315" height="296" rx="18" fill="{PANEL}" stroke="{LINE}"/><text x="868" y="48" fill="{CYAN}" font-size="9" letter-spacing="2">ASCII / PORTRAIT</text>'
- for i,line in enumerate(PORTRAIT_ASCII): body+=f'<text x="870" y="{83+i*15}" fill="{CYAN if i in (5,6) else INK}" font-family="monospace" font-size="12" xml:space="preserve">{escape(line)}</text>'
- body+=f'<path d="M880 171 Q932 145 984 171" fill="none" stroke="{CYAN}" stroke-width="2.5" class="pulse"/><text x="868" y="290" fill="{TAUPE}" font-size="10">INK / CYAN / SYSTEMS</text>'
- save("hero.svg",1200,350,"Hiten Borkar — engineering portfolio",body)
+ portrait=read_json(PORTRAIT,{})
+ ascii_rows=portrait.get("asciiText",[])
+ color_rows=portrait.get("asciiColors",[])
+ body=f'<rect width="1200" height="630" rx="24" fill="{BG}"/><circle cx="895" cy="310" r="270" fill="{CYAN}" opacity=".045"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">INK / CYAN / SYSTEMS</text><rect x="605" y="32" width="570" height="566" rx="20" fill="{PANEL}" stroke="{LINE}"/><text x="628" y="60" fill="{CYAN}" font-size="10" letter-spacing="2">ASCII PORTRAIT / SOURCE RENDER</text>'
+ ascii_x=652
+ first_y=91
+ line_height=6.65
+ font_size=5.35
+ for row_index,row in enumerate(ascii_rows):
+  colors=color_rows[row_index] if row_index<len(color_rows) else []
+  chunks=[]
+  run_char=None
+  run_color=None
+  run_text=""
+  for col_index,char in enumerate(row):
+   color=colors[col_index] if col_index<len(colors) else INK
+   color=color if isinstance(color,str) and color.startswith("#") else INK
+   key=(char,color)
+   if run_char is None:
+    run_char,run_color,run_text=char,color,char
+   elif key==(run_char,run_color):
+    run_text+=char
+   else:
+    chunks.append(f'<tspan fill="{run_color}">{escape(run_text)}</tspan>')
+    run_char,run_color,run_text=char,color,char
+  if run_char is not None:
+   chunks.append(f'<tspan fill="{run_color}">{escape(run_text)}</tspan>')
+  body+=f'<text x="{ascii_x}" y="{first_y+row_index*line_height:.2f}" font-family="monospace" font-size="{font_size}" xml:space="preserve">{"".join(chunks)}</text>'
+ body+=f'<path d="M628 574 H1152" stroke="{LINE}" stroke-width="1" opacity=".8"/><text x="628" y="588" fill="{TAUPE}" font-size="8">150 COLUMNS · 75 ROWS · ORIGINAL CELL COLORS</text>'
+ save("hero.svg",1200,630,"Hiten Borkar — source-rendered color ASCII portrait",body)
+
 def render_activity(total,days_count,active,current,best,busiest,monthly):
  keys=sorted(monthly)[-12:]
  if not keys: keys=[(date.today()-timedelta(days=30*i)).strftime("%Y-%m") for i in range(11,-1,-1)]
