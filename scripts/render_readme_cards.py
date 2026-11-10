@@ -33,56 +33,40 @@ def render_hero(total):
  portrait=read_json(PORTRAIT,{})
  ascii_rows=portrait.get("asciiText",[])
  color_rows=portrait.get("asciiColors",[])
+ cols=int(portrait.get("cols",150))
+ rows=int(portrait.get("rows",75))
  panel_x,panel_y,panel_w,panel_h=605,32,570,566
- cell_w=3.18
- line_h=6.15
- font_size=5.25
- image_w=(len(ascii_rows[0])*cell_w) if ascii_rows else 0
- image_x=panel_x+(panel_w-image_w)/2
- image_y=panel_y+87
- paper="#C6B49C"
- body=f'<rect width="1200" height="630" rx="24" fill="{BG}"/><circle cx="895" cy="310" r="270" fill="{CYAN}" opacity=".045"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">INK / CYAN / SYSTEMS</text><rect x="{panel_x}" y="{panel_y}" width="{panel_w}" height="{panel_h}" rx="20" fill="{paper}" stroke="#9E8B75"/><text x="628" y="60" fill="#145A64" font-size="10" letter-spacing="2">ASCII PORTRAIT / TONAL CHARACTER RENDER</text>'
- ramp="@%#*+=-:."
- for row_index,row in enumerate(ascii_rows):
+ font_size=5.5
+ cell_w=font_size*0.60
+ line_h=6.3
+ ascii_width=cols*cell_w
+ ascii_x=panel_x+(panel_w-ascii_width)/2
+ first_y=89
+ body=f'<rect width="1200" height="630" rx="24" fill="{BG}"/><circle cx="895" cy="310" r="270" fill="{CYAN}" opacity=".045"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">INK / CYAN / SYSTEMS</text><rect x="{panel_x}" y="{panel_y}" width="{panel_w}" height="{panel_h}" rx="20" fill="#060606" stroke="{LINE}"/><text x="628" y="60" fill="{CYAN}" font-size="10" letter-spacing="2">GITASCII / ORIGINAL BINARY ASCII</text>'
+ for row_index in range(min(rows,len(ascii_rows))):
+  row=ascii_rows[row_index]
   colors=color_rows[row_index] if row_index<len(color_rows) else []
   runs=[]
+  run_color=None
   run_text=""
-  run_fill=None
-  for col_index,mask in enumerate(row):
-   if mask==" ":
-    glyph=" "
-    fill=paper
+  for col_index,char in enumerate(row[:cols]):
+   color=colors[col_index] if col_index<len(colors) else INK
+   if not (isinstance(color,str) and len(color)==7 and color.startswith("#")):
+    color=INK
+   if run_color is None:
+    run_color=color
+    run_text=char
+   elif color==run_color:
+    run_text+=char
    else:
-    color=colors[col_index] if col_index<len(colors) else "#302820"
-    try:
-     red=int(color[1:3],16); green=int(color[3:5],16); blue=int(color[5:7],16)
-    except (ValueError,TypeError,IndexError):
-     red,green,blue=48,40,32
-    luminance=0.2126*red+0.7152*green+0.0722*blue
-    shade=max(0,min(len(ramp)-1,int((255-luminance)/255*(len(ramp)-1)+0.5)))
-    glyph=ramp[shade]
-    if blue>red+22 and green>red+18 and blue>90:
-     fill="#087E91"
-    elif luminance<55:
-     fill="#171310"
-    elif luminance<105:
-     fill="#3D332B"
-    elif luminance<155:
-     fill="#756452"
-    else:
-     fill="#9B8974"
-   if run_fill is None:
-    run_fill=fill; run_text=glyph
-   elif fill==run_fill:
-    run_text+=glyph
-   else:
-    runs.append(f'<tspan fill="{run_fill}">{escape(run_text)}</tspan>')
-    run_fill=fill; run_text=glyph
-  if run_fill is not None:
-   runs.append(f'<tspan fill="{run_fill}">{escape(run_text)}</tspan>')
-  body+=f'<text x="{image_x:.2f}" y="{image_y+row_index*line_h:.2f}" font-family="monospace" font-size="{font_size}" xml:space="preserve">{"".join(runs)}</text>'
- body+=f'<path d="M628 574 H1152" stroke="#9E8B75" stroke-width="1" opacity=".8"/><text x="628" y="588" fill="#625343" font-size="8">150 × 75 CELLS · TONAL ASCII · CYAN HIGHLIGHTS</text>'
- save("hero.svg",1200,630,"Hiten Borkar — shaded ASCII portrait",body)
+    runs.append(f'<tspan fill="{run_color}">{escape(run_text)}</tspan>')
+    run_color=color
+    run_text=char
+  if run_color is not None:
+   runs.append(f'<tspan fill="{run_color}">{escape(run_text)}</tspan>')
+  body+=f'<text x="{ascii_x:.2f}" y="{first_y+row_index*line_h:.2f}" font-family="JetBrains Mono,DejaVu Sans Mono,monospace" font-size="{font_size}" xml:space="preserve">{"".join(runs)}</text>'
+ body+=f'<path d="M628 574 H1152" stroke="{LINE}" stroke-width="1" opacity=".8"/><text x="628" y="588" fill="{TAUPE}" font-size="8">{cols} COLUMNS · {rows} ROWS · ORIGINAL 0/1 CHARACTERS + CELL COLORS</text>'
+ save("hero.svg",1200,630,"Hiten Borkar — original GitAscii artwork",body)
 
 def render_activity(total,days_count,active,current,best,busiest,monthly):
  keys=sorted(monthly)[-12:]
