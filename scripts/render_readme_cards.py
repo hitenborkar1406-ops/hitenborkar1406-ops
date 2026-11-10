@@ -41,7 +41,7 @@ def main():
  save("activity.svg",1200,310,"Monthly contributions and streaks",body)
  bydate={x["date"]:x.get("contributionCount",0) for x in days}; today=date.today(); start=today-timedelta(days=363); start-=timedelta(days=start.weekday()); mx=max(bydate.values() or [1]) or 1
  pal=["#25282B","#39464A","#526B70","#398B9A",BLUE]
- body=f'<rect width="1200" height="190" rx="22" fill="{BG}"/><text x="38" y="42" fill="{BG}" font-size="23" class="serif">Consistency, in cyan.</text><text x="38" y="65" fill="#BEB09A" font-size="12">DAILY CONTRIBUTIONS · LAST 52 WEEKS</text>'
+ body=f'<rect width="1200" height="190" rx="22" fill="{BG}"/><text x="38" y="42" fill="{INK}" font-size="23" class="serif">Consistency, in cyan.</text><text x="38" y="65" fill="#BEB09A" font-size="12">DAILY CONTRIBUTIONS · LAST 52 WEEKS</text>'
  for i in range(364):
   day=start+timedelta(days=i); n=bydate.get(day.isoformat(),0); level=0 if n==0 else min(4,1+int(4*n/mx)); body+=f'<rect x="{40+(i//7)*15}" y="{86+(i%7)*13}" width="10" height="9" rx="2" fill="{pal[level]}"/>'
  body+=f'<text x="1050" y="113" fill="{GOLD}" font-size="34" class="serif">{total:,}</text><text x="1050" y="136" fill="{BG}" font-size="11">TOTAL CONTRIBUTIONS</text>'
