@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from xml.sax.saxutils import escape
 
 ROOT=Path(__file__).resolve().parents[1]; OUT=ROOT/"cards"; DATA=ROOT/"data"/"contributions.json"; REPOS=ROOT/"data"/"repos.json"
-BG,INK,CYAN,BLUE,TAUPE,LINE="#131D38","#ADC7E9","#FFC20D","#ADC7E9","#8FA6C7","#354563"; PANEL="#1B2948"
+BG,INK,CYAN,BLUE,TAUPE,LINE="#1C1D20","#F2F4F1","#FFC928","#F2F4F1","#AEB2B0","#414348"; PANEL="#F2F4F1"
 ASCII_ART=ROOT/"data"/"ascii_art.txt"
 def svg(w,h,title,body):
  return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{escape(title)}"><title>{escape(title)}</title><defs><style>text{{font-family:Inter,Arial,sans-serif}}.serif{{font-family:Georgia,serif}}@keyframes rise{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:translateY(0)}}}}@keyframes pulse{{0%,100%{{opacity:.35}}50%{{opacity:1}}}}@keyframes reveal{{from{{opacity:0}}to{{opacity:1}}}}.portrait-row{{opacity:1}}.enter{{animation:rise .8s ease both}}.pulse{{animation:pulse 2.8s ease-in-out infinite}}@media(prefers-reduced-motion:reduce){{*{{animation:none!important;opacity:1!important}}}}</style></defs>{body}</svg>'''
@@ -35,7 +35,7 @@ def render_hero(total):
   raise FileNotFoundError(f"Missing hero portrait image: {photo_path}")
  photo_b64=base64.b64encode(photo_path.read_bytes()).decode("ascii")
  image_x,image_y,image_size=690,105,420
- body=f'<defs><clipPath id="portraitClip"><rect x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" rx="8"/></clipPath></defs><rect width="1200" height="630" rx="24" fill="{BG}"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">MIDNIGHT NAVY / POWDER BLUE / SUNFLOWER YELLOW</text><image x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#portraitClip)" href="data:image/webp;base64,{photo_b64}"/>'
+ body=f'<defs><clipPath id="portraitClip"><rect x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" rx="8"/></clipPath></defs><rect width="1200" height="630" rx="24" fill="{BG}"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">DEEP GRAPHITE / SOFT CLOUD WHITE / SUNSHINE YELLOW</text><image x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#portraitClip)" href="data:image/webp;base64,{photo_b64}"/>'
  save("hero.svg",1200,630,"Hiten Borkar — anime portrait and engineering portfolio",body)
 
 def render_activity(total,days_count,active,current,best,busiest,monthly):
@@ -77,7 +77,7 @@ def render_heatmap(total,counts):
  day_count=(today-start).days+1
  columns=(day_count+6)//7
  maximum=max(counts.values() or [1]) or 1
- palette=["#263452","#354563","#61799F","#ADC7E9","#FFC20D"]
+ palette=["#414348","#666B6B","#AEB2B0","#F2F4F1","#FFC928"]
  body=f'<rect width="1200" height="270" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="48" fill="{INK}" font-size="30" class="serif">Every day, <tspan fill="{CYAN}" font-style="italic">in red.</tspan></text><text x="1015" y="45" fill="{TAUPE}" font-size="11" letter-spacing="2">REFRESHED DAILY</text><text x="42" y="77" fill="{TAUPE}" font-size="10" letter-spacing="1">LAST 52 WEEKS · DAILY CONTRIBUTIONS</text>'
  month_seen=set()
  for offset in range(day_count):
@@ -122,14 +122,14 @@ def render_repo_cards(repos):
   data=repos.get(key,{}); stars=int(data.get("stargazers_count",0)); forks=int(data.get("forks_count",0)); updated=data.get("updated_at","—")
   try: updated=datetime.fromisoformat(updated.replace("Z","+00:00")).strftime("%b %Y")
   except (ValueError,TypeError): updated="—"
-  body=f'<defs><linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ADC7E9"/><stop offset="1" stop-color="#C5D7EF"/></linearGradient></defs><rect width="560" height="170" rx="18" fill="url(#card)" stroke="{LINE}"/><rect x="0" y="22" width="3" height="126" rx="2" fill="{CYAN}"/><text x="28" y="37" fill="{CYAN}" font-size="10">FEATURED PROJECT / {i:02d}</text><text x="28" y="72" fill="{INK}" font-size="25" class="serif">{escape(title)}</text><text x="28" y="98" fill="{TAUPE}" font-size="12">{escape(desc)}</text><text x="28" y="125" fill="{CYAN}" font-size="11">{escape(stack)}</text><text x="28" y="151" fill="{TAUPE}" font-size="10">★ {stars}   FORKS {forks}   UPDATED {escape(updated)}</text>'
+  body=f'<defs><linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F4F1"/><stop offset="1" stop-color="#E5E8E4"/></linearGradient></defs><rect width="560" height="170" rx="18" fill="url(#card)" stroke="{LINE}"/><rect x="0" y="22" width="3" height="126" rx="2" fill="{CYAN}"/><text x="28" y="37" fill="{CYAN}" font-size="10">FEATURED PROJECT / {i:02d}</text><text x="28" y="72" fill="{INK}" font-size="25" class="serif">{escape(title)}</text><text x="28" y="98" fill="{TAUPE}" font-size="12">{escape(desc)}</text><text x="28" y="125" fill="{CYAN}" font-size="11">{escape(stack)}</text><text x="28" y="151" fill="{TAUPE}" font-size="10">★ {stars}   FORKS {forks}   UPDATED {escape(updated)}</text>'
   save(file,560,170,title,body)
 def main():
  contrib=read_json(DATA,{"total":0,"weeks":[]}); days=flatten(contrib); counts,active,current,best,busiest,monthly=activity_stats(days); total=int(contrib.get("total",sum(counts.values()))); repos=read_json(REPOS,{})
  render_hero(total); render_activity(total,len(days),active,current,best,busiest,monthly); render_heatmap(total,counts); render_languages(repos)
- render_tile("build.svg","BUILD","Software & systems","01","#ADC7E9","#C5D7EF",BG)
- render_tile("data.svg","DATA","ML & analytics","02","#ADC7E9","#C5D7EF",BG)
- render_tile("explore.svg","EXPLORE","Ideas & research","03","#ADC7E9","#C5D7EF",BG)
+ render_tile("build.svg","BUILD","Software & systems","01","#F2F4F1","#E5E8E4","#1C1D20")
+ render_tile("data.svg","DATA","ML & analytics","02","#F2F4F1","#E5E8E4","#1C1D20")
+ render_tile("explore.svg","EXPLORE","Ideas & research","03","#F2F4F1","#E5E8E4","#1C1D20")
  render_repo_cards(repos)
  print(f"Rendered profile cards: {len(days)} contribution days, {total} contributions, {len(repos)} repositories.")
 if __name__=="__main__": main()
