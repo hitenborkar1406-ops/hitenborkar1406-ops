@@ -68,6 +68,7 @@ def render_activity(total,days_count,active,current,best,busiest,monthly):
  for x,y,value,label in right:
   body+=f'<text x="{x}" y="{y}" fill="{INK}" font-size="48" class="serif">{escape(value)}</text><text x="{x}" y="{y+23}" fill="{TAUPE}" font-size="12">{escape(label)}</text>'
  body+=f'<text x="54" y="410" fill="{TAUPE}" font-size="10" letter-spacing="1">PEAK MONTH · {datetime.strptime(best_month,"%Y-%m").strftime("%B %Y").upper()} · {best_value:,} CONTRIBUTIONS</text>'
+ body=body.replace('fill="{INK}"','fill="{BG}"')
  save("activity.svg",1200,430,"GitHub activity over the last 12 months",body)
 
 def render_heatmap(total,counts):
@@ -98,6 +99,7 @@ def render_heatmap(total,counts):
  for j,color in enumerate(palette):
   body+=f'<rect x="{1050+j*22}" y="180" width="15" height="12" rx="3" fill="{color}"/>'
  body+=f'<text x="1162" y="192" fill="{TAUPE}" font-size="10">MORE</text><text x="42" y="252" fill="{TAUPE}" font-size="10">SUNDAY</text><text x="122" y="252" fill="{TAUPE}" font-size="10">MONDAY → SATURDAY</text>'
+ body=body.replace('fill="{INK}"','fill="{BG}"')
  save("heatmap.svg",1200,270,"GitHub contribution heatmap — refreshed daily",body)
 
 def render_languages(repos):
@@ -112,6 +114,7 @@ def render_languages(repos):
   body+=f'<text x="42" y="{y+10}" fill="{INK}" font-size="11">{escape(language)}</text><rect x="170" y="{y}" width="560" height="10" rx="5" fill="#354563"/><rect x="170" y="{y}" width="{width:.1f}" height="10" rx="5" fill="{colors[i]}"/><text x="750" y="{y+10}" fill="{TAUPE}" font-size="10">{100*amount/total_bytes:.1f}%</text>'
  if not top: body+=f'<text x="42" y="125" fill="{TAUPE}" font-size="14">Language data will appear after the first repository sync.</text>'
  body+=f'<text x="900" y="120" fill="{CYAN}" font-size="32" class="serif">{len(totals)}</text><text x="900" y="141" fill="{TAUPE}" font-size="11">LANGUAGES DETECTED</text>'
+ body=body.replace('fill="{INK}"','fill="{BG}"')
  save("languages.svg",1200,225,"Programming language distribution",body)
 def render_tile(file,label,subtitle,num,start,end,fg):
  body=f'<defs><linearGradient id="tilebg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{start}"/><stop offset="1" stop-color="{end}"/></linearGradient></defs><rect width="380" height="190" rx="20" fill="url(#tilebg)"/><path d="M24 14 H356" stroke="{CYAN}" stroke-width="2" opacity=".9"/><text x="28" y="42" fill="{fg}" font-size="12" letter-spacing="3">{escape(label)}</text><text x="28" y="91" fill="{fg}" font-size="27" class="serif">{escape(subtitle)}</text><text x="28" y="154" fill="{fg}" font-size="12">EXPLORE PROJECTS ↗</text><text x="335" y="166" text-anchor="end" fill="{CYAN}" font-size="44" class="serif">{num}</text>'
@@ -122,7 +125,7 @@ def render_repo_cards(repos):
   data=repos.get(key,{}); stars=int(data.get("stargazers_count",0)); forks=int(data.get("forks_count",0)); updated=data.get("updated_at","—")
   try: updated=datetime.fromisoformat(updated.replace("Z","+00:00")).strftime("%b %Y")
   except (ValueError,TypeError): updated="—"
-  body=f'<defs><linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F4F1"/><stop offset="1" stop-color="#E5E8E4"/></linearGradient></defs><rect width="560" height="170" rx="18" fill="url(#card)" stroke="{LINE}"/><rect x="0" y="22" width="3" height="126" rx="2" fill="{CYAN}"/><text x="28" y="37" fill="{CYAN}" font-size="10">FEATURED PROJECT / {i:02d}</text><text x="28" y="72" fill="{INK}" font-size="25" class="serif">{escape(title)}</text><text x="28" y="98" fill="{TAUPE}" font-size="12">{escape(desc)}</text><text x="28" y="125" fill="{CYAN}" font-size="11">{escape(stack)}</text><text x="28" y="151" fill="{TAUPE}" font-size="10">★ {stars}   FORKS {forks}   UPDATED {escape(updated)}</text>'
+  body=f'<defs><linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F4F1"/><stop offset="1" stop-color="#E5E8E4"/></linearGradient></defs><rect width="560" height="170" rx="18" fill="url(#card)" stroke="{LINE}"/><rect x="0" y="22" width="3" height="126" rx="2" fill="{CYAN}"/><text x="28" y="37" fill="{CYAN}" font-size="10">FEATURED PROJECT / {i:02d}</text><text x="28" y="72" fill="{BG}" font-size="25" class="serif">{escape(title)}</text><text x="28" y="98" fill="#53585B" font-size="12">{escape(desc)}</text><text x="28" y="125" fill="{CYAN}" font-size="11">{escape(stack)}</text><text x="28" y="151" fill="#53585B" font-size="10">★ {stars}   FORKS {forks}   UPDATED {escape(updated)}</text>'
   save(file,560,170,title,body)
 def main():
  contrib=read_json(DATA,{"total":0,"weeks":[]}); days=flatten(contrib); counts,active,current,best,busiest,monthly=activity_stats(days); total=int(contrib.get("total",sum(counts.values()))); repos=read_json(REPOS,{})
