@@ -135,15 +135,15 @@ def render_heatmap_html(total,days):
    src=f"cards/heatmap-cell-{level}.svg?v={version}"
    cells.append(f'<td title="{escape(tooltip, {chr(34): "&quot;"})}" align="center"><img src="{src}" width="13" height="13" alt="" title="{escape(tooltip, {chr(34): "&quot;"})}"/></td>')
   rows.append("<tr>"+"".join(cells)+"</tr>")
- table='<table border="0" cellpadding="1" cellspacing="2">\\n'+"\\n".join(rows)+"\\n</table>"
- block=f'<p><strong>Every day, <em>in sunshine.</em></strong> &nbsp; <sub>LAST 52 WEEKS · DAILY CONTRIBUTIONS · REFRESHED DAILY</sub></p>\\n<p><strong>{total:,}</strong> contributions</p>\\n'+table
+ table='<table border="0" cellpadding="1" cellspacing="2">\n'+"\n".join(rows)+"\n</table>"
+ block=f'<p><strong>Every day, <em>in sunshine.</em></strong> &nbsp; <sub>LAST 52 WEEKS · DAILY CONTRIBUTIONS · REFRESHED DAILY</sub></p>\n<p><strong>{total:,}</strong> contributions</p>\n'+table
  readme=ROOT/"README.md"
  if readme.exists():
   content=readme.read_text(encoding="utf-8")
   begin="<!-- DAILY-HEATMAP:START -->"; end="<!-- DAILY-HEATMAP:END -->"
   if begin in content and end in content:
    before,rest=content.split(begin,1); _,after=rest.split(end,1)
-   readme.write_text(before+begin+"\\n"+block+"\\n"+end+after,encoding="utf-8")
+   readme.write_text(before+begin+"\n"+block+"\n"+end+after,encoding="utf-8")
   else:
    print("README heatmap markers missing; skipped inline tooltip grid update.")
 
