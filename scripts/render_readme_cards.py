@@ -1,174 +1,597 @@
 #!/usr/bin/env python3
-import json, base64
-from pathlib import Path
+"""Render the profile README cards (SVG) from GitHub contribution + repo data.
+
+Inputs : data/contributions.json, data/repos.json, assets/hero-anime.webp, assets/icons/*
+Outputs: cards/*.svg, and the `?v=` cache-busters on card URLs inside README.md
+
+Design notes
+- Every card is a self-contained dark panel, so it looks the same on GitHub's
+  light and dark themes. Nothing is fetched at view time (icons are embedded).
+- Cards that sit side by side carry their own transparent margin, so spacing
+  between them is part of the artwork instead of depending on HTML whitespace.
+"""
+import base64
+import json
+import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from xml.sax.saxutils import escape
 
-ROOT=Path(__file__).resolve().parents[1]; OUT=ROOT/"cards"; DATA=ROOT/"data"/"contributions.json"; REPOS=ROOT/"data"/"repos.json"
-BG,INK,CYAN,BLUE,TAUPE,LINE="#F1F3F4","#20252B","#E4002B","#9CC6E0","#53616B","#D4DDE3"; PANEL="#F1F3F4"
-ASCII_ART=ROOT/"data"/"ascii_art.txt"
-def svg(w,h,title,body):
- return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{escape(title)}"><title>{escape(title)}</title><defs><style>text{{font-family:Inter,Arial,sans-serif}}.serif{{font-family:Georgia,serif}}@keyframes rise{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:translateY(0)}}}}@keyframes pulse{{0%,100%{{opacity:.35}}50%{{opacity:1}}}}@keyframes reveal{{from{{opacity:0}}to{{opacity:1}}}}.portrait-row{{opacity:1}}.enter{{animation:rise .8s ease both}}.pulse{{animation:pulse 2.8s ease-in-out infinite}}@media(prefers-reduced-motion:reduce){{*{{animation:none!important;opacity:1!important}}}}</style></defs>{body}</svg>'''
-def save(name,w,h,title,body):
- OUT.mkdir(exist_ok=True); (OUT/name).write_text(svg(w,h,title,body),encoding="utf-8")
-def read_json(path,default):
- try: return json.loads(path.read_text(encoding="utf-8"))
- except (OSError,ValueError): return default
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "cards"
+ICONS = ROOT / "assets" / "icons"
+README = ROOT / "README.md"
+DATA = ROOT / "data" / "contributions.json"
+REPOS = ROOT / "data" / "repos.json"
+
+# ── Theme ────────────────────────────────────────────────────────────────────
+INK, SOFT, MUTED, DIM = "#EAF0FA", "#C5D0E2", "#93A3BC", "#64748B"
+LINE, RAISED = "#243049", "#172136"
+INDIGO, CYAN, EMERALD = "#8B7CFF", "#22D3EE", "#34D399"
+HEAT = ["#1B2740", "#164E63", "#0E7490", "#22D3EE", "#A5F3FC"]  # level 0..4
+
+SANS = '-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif'
+MONO = 'ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace'
+
+STYLE = f"text{{font-family:{SANS}}}.mono{{font-family:{MONO}}}"
+
+DEFS = (
+    f'<linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16203A"/><stop offset="1" stop-color="#0D1322"/></linearGradient>'
+    f'<linearGradient id="brand" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{INDIGO}"/><stop offset="1" stop-color="{CYAN}"/></linearGradient>'
+)
+
+LANG_COLORS = {
+    "Python": "#3572A5", "JavaScript": "#F1E05A", "TypeScript": "#3178C6", "HTML": "#E34C26",
+    "CSS": "#8B5CF6", "Jupyter Notebook": "#DA5B0B", "Shell": "#89E051", "C": "#8A94A6",
+    "C++": "#F34B7D", "Java": "#B07219", "Dockerfile": "#2496ED", "Batchfile": "#C1F12E",
+    "Mako": "#7E858D",
+}
+FALLBACK_COLORS = ["#8B7CFF", "#22D3EE", "#34D399", "#F59E0B", "#F472B6", "#60A5FA"]
+
+
+# ── Small helpers ────────────────────────────────────────────────────────────
+def svg(w, h, title, body):
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+        f'width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{escape(title)}">'
+        f"<title>{escape(title)}</title><defs>{DEFS}</defs><style>{STYLE}</style>{body}</svg>"
+    )
+
+
+def save(name, w, h, title, body):
+    OUT.mkdir(exist_ok=True)
+    (OUT / name).write_text(svg(w, h, title, body), encoding="utf-8")
+
+
+def read_json(path, default):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return default
+
+
+def t(x, y, s, size=16, fill=INK, w=400, anchor="start", mono=False, ls=0):
+    """Text node."""
+    a = f' text-anchor="{anchor}"' if anchor != "start" else ""
+    l = f' letter-spacing="{ls}"' if ls else ""
+    c = ' class="mono"' if mono else ""
+    return f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{w}" fill="{fill}"{a}{l}{c}>{escape(str(s))}</text>'
+
+
+def tw(s, size, mono=False, bold=False):
+    """Rough text width, good enough for laying out pills and chips."""
+    if mono:
+        return len(s) * size * 0.61
+    narrow = set("iljtfI.,:;'| ")
+    units = sum(0.64 if ch.isupper() else 0.62 if ch.isdigit() else 0.30 if ch in narrow else 0.56 for ch in s)
+    return units * size * (1.05 if bold else 1)
+
+
+def panel(w, h, r=24, x=0, y=0, glow=None):
+    out = f'<rect x="{x + .5}" y="{y + .5}" width="{w - 1}" height="{h - 1}" rx="{r}" fill="url(#panel)" stroke="{LINE}"/>'
+    if glow:
+        gx, gy, gr, color = glow
+        out += (
+            f'<defs><radialGradient id="glow" cx="{gx}" cy="{gy}" r="{gr}" gradientUnits="userSpaceOnUse">'
+            f'<stop offset="0" stop-color="{color}" stop-opacity=".16"/><stop offset="1" stop-color="{color}" stop-opacity="0"/>'
+            f'</radialGradient></defs><rect x="{x + 1}" y="{y + 1}" width="{w - 2}" height="{h - 2}" rx="{r}" fill="url(#glow)"/>'
+        )
+    return out
+
+
+_uid = [0]
+
+
+def _inner(raw):
+    raw = re.sub(r"<!--.*?-->", "", raw, flags=re.S)
+    raw = re.sub(r"<title>.*?</title>", "", raw, flags=re.S)
+    return re.search(r"<svg[^>]*>(.*)</svg>", raw, re.S).group(1).strip()
+
+
+def lucide(name, x, y, size, color, sw=2):
+    """Stroke icon from assets/icons/lucide, drawn at (x, y) with the given size."""
+    inner = _inner((ICONS / "lucide" / f"{name}.svg").read_text(encoding="utf-8"))
+    return (
+        f'<g transform="translate({x} {y}) scale({size / 24:.4f})" fill="none" stroke="{color}" '
+        f'stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round">{inner}</g>'
+    )
+
+
+RECOLOR = {  # logos whose original colors disappear on a dark panel
+    "pandas": {"#130754": "#B7AEF5"},
+    "matplotlib": {"#2c2c2c": "#CBD5E1", "#11557c": "#5AA9D6"},
+    "javascript": {"#323330": "#1F2937"},
+}
+
+
+def brand(name, x, y, size, fill=None):
+    """Logo from assets/icons/brands. `fill` tints single-color (Simple Icons) logos."""
+    raw = (ICONS / "brands" / f"{name}.svg").read_text(encoding="utf-8")
+    vb = [float(v) for v in re.search(r'viewBox="([\d.\s-]+)"', raw).group(1).split()]
+    inner = _inner(raw)
+    for old, new in RECOLOR.get(name, {}).items():
+        inner = inner.replace(old, new)
+    _uid[0] += 1
+    p = f"i{_uid[0]}-"  # ids must stay unique inside one SVG document
+    inner = re.sub(r'id="([^"]+)"', lambda m: f'id="{p}{m.group(1)}"', inner)
+    inner = re.sub(r"url\(#([^)]+)\)", lambda m: f"url(#{p}{m.group(1)})", inner)
+    inner = re.sub(r'href="#([^"]+)"', lambda m: f'href="#{p}{m.group(1)}"', inner)
+    f = f' fill="{fill}"' if fill else ""
+    return f'<g transform="translate({x} {y}) scale({size / max(vb[2], vb[3]):.4f})"{f}>{inner}</g>'
+
+
+def top_bar(x, y, w, h, r, fill, extra=""):
+    """Bar with rounded top corners only."""
+    r = min(r, h, w / 2)
+    return (
+        f'<path d="M{x} {y + h}V{y + r}Q{x} {y} {x + r} {y}H{x + w - r}Q{x + w} {y} {x + w} {y + r}V{y + h}Z" '
+        f'fill="{fill}"{extra}/>'
+    )
+
+
+# ── Data ─────────────────────────────────────────────────────────────────────
 def flatten(data):
- return sorted([d for week in data.get("weeks",[]) for d in week.get("contributionDays",[])],key=lambda x:x["date"])
+    days = [d for week in data.get("weeks", []) for d in week.get("contributionDays", [])]
+    return sorted(days, key=lambda d: d["date"])
+
+
 def activity_stats(days):
- counts={d["date"]:int(d.get("contributionCount",0)) for d in days}
- active={date.fromisoformat(k) for k,v in counts.items() if v>0}; today=date.today()
- cursor=today if today in active else today-timedelta(days=1); current=0
- while cursor in active: current+=1; cursor-=timedelta(days=1)
- best=run=0; previous=None
- for day in sorted(active):
-  run=run+1 if previous and day==previous+timedelta(days=1) else 1; best=max(best,run); previous=day
- busiest=max(days,key=lambda d:int(d.get("contributionCount",0)),default={"date":"—","contributionCount":0})
- monthly=defaultdict(int)
- for d in days: monthly[d["date"][:7]]+=int(d.get("contributionCount",0))
- return counts,len(active),current,best,busiest,monthly
-def render_hero(total):
- photo_path=ROOT/"assets"/"hero-anime.webp"
- if not photo_path.exists():
-  raise FileNotFoundError(f"Missing hero portrait image: {photo_path}")
- photo_b64=base64.b64encode(photo_path.read_bytes()).decode("ascii")
- image_x,image_y,image_size=690,105,420
- body=f'<defs><clipPath id="portraitClip"><rect x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" rx="8"/></clipPath></defs><rect width="1200" height="630" rx="24" fill="{BG}"/><text x="58" y="72" fill="{CYAN}" font-size="13" letter-spacing="4">HITEN BORKAR / ENGINEERING PORTFOLIO</text><text x="58" y="174" fill="{INK}" font-size="58" class="serif enter">Building systems</text><text x="58" y="238" fill="{INK}" font-size="46" class="serif enter">that solve real problems.</text><text x="61" y="292" fill="{TAUPE}" font-size="17">Computer Science Engineer</text><text x="61" y="320" fill="{TAUPE}" font-size="17">Full-stack · Applied ML · Data</text><path d="M60 358 H535" stroke="{LINE}" stroke-width="1"/><text x="60" y="397" fill="{CYAN}" font-size="12" letter-spacing="2">LAST 12 MONTHS ON GITHUB</text><text x="60" y="465" fill="{INK}" font-size="54" class="serif">{total:,}</text><text x="60" y="495" fill="{TAUPE}" font-size="12">CONTRIBUTIONS</text><text x="60" y="570" fill="{TAUPE}" font-size="11">POLAR WHITE / GLACIER BLUE / RACING RED</text><image x="{image_x}" y="{image_y}" width="{image_size}" height="{image_size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#portraitClip)" href="data:image/webp;base64,{photo_b64}"/>'
- save("hero.svg",1200,630,"Hiten Borkar — anime portrait and engineering portfolio",body)
+    counts = {d["date"]: int(d.get("contributionCount", 0)) for d in days}
+    active = {date.fromisoformat(k) for k, v in counts.items() if v > 0}
+    today = date.today()
+    cursor = today if today in active else today - timedelta(days=1)
+    current = 0
+    while cursor in active:
+        current += 1
+        cursor -= timedelta(days=1)
+    best = run = 0
+    previous = None
+    for day in sorted(active):
+        run = run + 1 if previous and day == previous + timedelta(days=1) else 1
+        best = max(best, run)
+        previous = day
+    busiest = max(days, key=lambda d: int(d.get("contributionCount", 0)), default={"date": "—", "contributionCount": 0})
+    monthly = defaultdict(int)
+    for d in days:
+        monthly[d["date"][:7]] += int(d.get("contributionCount", 0))
+    return counts, len(active), current, best, busiest, monthly
 
-def render_activity(total,days_count,active,current,best,busiest,monthly):
- keys=sorted(monthly)[-12:]
- if not keys: keys=[(date.today()-timedelta(days=30*i)).strftime("%Y-%m") for i in range(11,-1,-1)]
- values=[monthly.get(k,0) for k in keys]
- maximum=max(values or [1]) or 1
- best_month=max(keys,key=lambda k:monthly.get(k,0))
- best_value=monthly.get(best_month,0)
- body=f'<rect width="1200" height="430" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="54" y="52" fill="{TAUPE}" font-size="13" letter-spacing="2">THE LAST 12 MONTHS ON GITHUB</text><text x="54" y="132" fill="{INK}" font-size="65" class="serif">{total:,}</text><text x="258" y="132" fill="{CYAN}" font-size="65" font-style="italic" class="serif">contributions</text><path d="M835 55 V385" stroke="{LINE}" stroke-width="1"/>'
- baseline=342
- for i,(key,value) in enumerate(zip(keys,values)):
-  x=58+i*63
-  height=0 if maximum==0 or value==0 else max(8,190*(value/maximum)**0.62)
-  y=baseline-height
-  fill=CYAN if key==best_month and value>0 else BLUE
-  body+=f'<rect x="{x}" y="{y:.1f}" width="48" height="{height:.1f}" rx="6" fill="{fill}"><animate attributeName="height" from="0" to="{height:.1f}" dur=".7s" begin="{i*.04:.2f}s" fill="freeze"/></rect>'
-  if key==best_month and value>0:
-   body+=f'<text x="{x+24}" y="{y-12:.1f}" text-anchor="middle" fill="{CYAN}" font-size="13">{value:,}</text>'
-  body+=f'<text x="{x+24}" y="374" text-anchor="middle" fill="{TAUPE}" font-size="12">{datetime.strptime(key,"%Y-%m").strftime("%b")}</text>'
- busy_date=busiest.get("date","—")
- try: busy_date=datetime.strptime(busy_date,"%Y-%m-%d").strftime("%d %b")
- except (ValueError,TypeError): pass
- busy_count=int(busiest.get("contributionCount",0))
- right=[
-  (875,130,str(current),"CURRENT STREAK · AND LONGEST"),
-  (875,252,f"{active} / {days_count}","DAYS WITH A CONTRIBUTION"),
-  (875,365,str(busy_count),f"BUSIEST DAY · {busy_date}")
- ]
- for x,y,value,label in right:
-  body+=f'<text x="{x}" y="{y}" fill="{INK}" font-size="48" class="serif">{escape(value)}</text><text x="{x}" y="{y+23}" fill="{TAUPE}" font-size="12">{escape(label)}</text>'
- body+=f'<text x="54" y="410" fill="{TAUPE}" font-size="10" letter-spacing="1">PEAK MONTH · {datetime.strptime(best_month,"%Y-%m").strftime("%B %Y").upper()} · {best_value:,} CONTRIBUTIONS</text>'
- save("activity.svg",1200,430,"GitHub activity over the last 12 months",body)
 
-def render_heatmap(total,counts):
- today=date.today()
- start=today-timedelta(days=363)
- start-=timedelta(days=(start.weekday()+1)%7)
- day_count=(today-start).days+1
- columns=(day_count+6)//7
- maximum=max(counts.values() or [1]) or 1
- palette=["#E3E8EC","#D2E3EF","#B6D7EB","#9CC6E0","#E4002B"]
- body=f'<rect width="1200" height="270" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="48" fill="{INK}" font-size="30" class="serif">Every day, <tspan fill="{CYAN}" font-style="italic">in sunshine.</tspan></text><text x="1015" y="45" fill="{TAUPE}" font-size="11" letter-spacing="2">REFRESHED DAILY</text><text x="42" y="77" fill="{TAUPE}" font-size="10" letter-spacing="1">LAST 52 WEEKS · DAILY CONTRIBUTIONS</text>'
- month_seen=set()
- for offset in range(day_count):
-  day=start+timedelta(days=offset)
-  col=offset//7
-  row=(day.weekday()+1)%7
-  x=42+col*17
-  y=96+row*17
-  if day.day==1 and day.month not in month_seen:
-   month_seen.add(day.month)
-   body+=f'<text x="{x}" y="91" fill="{TAUPE}" font-size="9">{day.strftime("%b")}</text>'
-  count=counts.get(day.isoformat(),0)
-  level=0 if count==0 else 1 if count<=2 else 2 if count<=5 else 3 if count<=10 else 4
-  day_label=day.strftime("%A, %B %-d, %Y")
-  contribution_label=f"{count} GitHub contribution" + ("" if count==1 else "s")
-  body+=f'<rect x="{x}" y="{y}" width="13" height="13" rx="3" fill="{palette[level]}" aria-label="{day_label}: {contribution_label}"><title>{day_label}: {contribution_label}</title></rect>'
- body+=f'<text x="1015" y="135" fill="{CYAN}" font-size="34" class="serif">{total:,}</text><text x="1015" y="155" fill="{TAUPE}" font-size="10">CONTRIBUTIONS</text><text x="1015" y="192" fill="{TAUPE}" font-size="10">LESS</text>'
- for j,color in enumerate(palette):
-  body+=f'<rect x="{1050+j*22}" y="180" width="15" height="12" rx="3" fill="{color}"/>'
- body+=f'<text x="1162" y="192" fill="{TAUPE}" font-size="10">MORE</text><text x="42" y="252" fill="{TAUPE}" font-size="10">SUNDAY</text><text x="122" y="252" fill="{TAUPE}" font-size="10">MONDAY → SATURDAY</text>'
- save("heatmap.svg",1200,270,"GitHub contribution heatmap — refreshed daily",body)
+def level_fn(values):
+    """GitHub-style quartile levels over the non-zero days (0 = none, 4 = most)."""
+    nz = sorted(v for v in values if v > 0)
+    if not nz:
+        return lambda c: 0
+    q = [nz[min(len(nz) - 1, int(len(nz) * p))] for p in (0.25, 0.5, 0.75)]
+    return lambda c: 0 if c <= 0 else 1 if c <= q[0] else 2 if c <= q[1] else 3 if c <= q[2] else 4
 
-def render_heatmap_html(total,days):
- # Individual HTML images expose native per-day title tooltips in GitHub README.
- today=max((date.fromisoformat(d["date"]) for d in days),default=date.today())
- start=today-timedelta(days=363)
- start-=timedelta(days=(start.weekday()+1)%7)
- day_map={d["date"]:int(d.get("contributionCount",0)) for d in days}
- palette=["#E3E8EC","#D2E3EF","#B6D7EB","#9CC6E0","#E4002B"]
- for level,color in enumerate(palette):
-  body=f'<rect width="16" height="16" rx="4" fill="{color}"/>'
-  save(f"heatmap-cell-{level}.svg",16,16,f"Contribution level {level}",body)
- weeks=((today-start).days+7)//7
- version=today.strftime("%Y%m%d")
- lines=[]
- for weekday in range(7):
-  cells=[]
-  for col in range(weeks):
-   day=start+timedelta(days=col*7+weekday)
-   if day>today or day.isoformat() not in day_map:
-    cells.append('<img src="cards/heatmap-cell-0.svg" width="11" height="11" alt=""/>')
-    continue
-   count=day_map[day.isoformat()]
-   level=0 if count==0 else 1 if count<=2 else 2 if count<=5 else 3 if count<=10 else 4
-   day_label=day.strftime("%A, %B %-d, %Y")
-   contribution=f"{count} contribution" + ("" if count==1 else "s")
-   tooltip=f"{day_label}: {contribution}"
-   src=f"cards/heatmap-cell-{level}.svg?v={version}"
-   cells.append(f'<img src="{src}" width="11" height="11" alt="" title="{escape(tooltip, {chr(34): "&quot;"})}"/>')
-  lines.append("<p>"+"&nbsp;".join(cells)+"</p>")
- block=f'<p><strong>Every day, <em>in sunshine.</em></strong> &nbsp; <sub>LAST 52 WEEKS · DAILY CONTRIBUTIONS · REFRESHED DAILY</sub></p>\n<p><strong>{total:,}</strong> contributions</p>\n'+"\n".join(lines)
- readme=ROOT/"README.md"
- if readme.exists():
-  content=readme.read_text(encoding="utf-8")
-  begin="<!-- DAILY-HEATMAP:START -->"; end="<!-- DAILY-HEATMAP:END -->"
-  if begin in content and end in content:
-   before,rest=content.split(begin,1); _,after=rest.split(end,1)
-   readme.write_text(before+begin+"\n"+block+"\n"+end+after,encoding="utf-8")
-  else:
-   print("README heatmap markers missing; skipped inline tooltip grid update.")
+
+# ── Cards ────────────────────────────────────────────────────────────────────
+def render_hero(total, active, best):
+    photo = ROOT / "assets" / "hero-anime.webp"
+    if not photo.exists():
+        raise FileNotFoundError(f"Missing hero portrait image: {photo}")
+    b64 = base64.b64encode(photo.read_bytes()).decode("ascii")
+    W, H = 1200, 520
+    px, py, ps = 836, 110, 300  # portrait
+
+    chips, cx = "", 64
+    for label in ("Full-stack", "Applied ML", "Data"):
+        w = tw(label, 15, bold=True) + 36
+        chips += (
+            f'<rect x="{cx}" y="312" width="{w:.0f}" height="36" rx="18" fill="{RAISED}" stroke="{LINE}"/>'
+            + t(cx + w / 2, 336, label, 15, SOFT, 600, "middle")
+        )
+        cx += w + 12
+
+    stats = ""
+    for i, (value, label) in enumerate(((f"{total:,}", "CONTRIBUTIONS · 12 MO"), (str(active), "ACTIVE DAYS"), (f"{best}", "LONGEST STREAK"))):
+        x = 64 + i * 232
+        stats += t(x, 446, value, 40, INK, 800) + t(x, 474, label, 13, MUTED, 400, mono=True, ls=1.5)
+    for x in (280, 512):
+        stats += f'<path d="M{x} 418V478" stroke="#33415F"/>'
+
+    body = (
+        f'<defs><clipPath id="hero-clip"><rect width="{W}" height="{H}" rx="28"/></clipPath>'
+        f'<clipPath id="portrait-clip"><rect x="{px}" y="{py}" width="{ps}" height="{ps}" rx="26"/></clipPath>'
+        f'<pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="{MUTED}" fill-opacity=".22"/></pattern>'
+        f'<radialGradient id="g1" cx="1010" cy="140" r="340" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="{INDIGO}" stop-opacity=".38"/><stop offset="1" stop-color="{INDIGO}" stop-opacity="0"/></radialGradient>'
+        f'<radialGradient id="g2" cx="140" cy="540" r="380" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="{CYAN}" stop-opacity=".16"/><stop offset="1" stop-color="{CYAN}" stop-opacity="0"/></radialGradient>'
+        f'<filter id="blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="22"/></filter></defs>'
+        f'<g clip-path="url(#hero-clip)"><rect width="{W}" height="{H}" fill="url(#panel)"/>'
+        f'<rect width="{W}" height="{H}" fill="url(#dots)"/><rect width="{W}" height="{H}" fill="url(#g1)"/><rect width="{W}" height="{H}" fill="url(#g2)"/></g>'
+        f'<rect x=".5" y=".5" width="{W - 1}" height="{H - 1}" rx="28" fill="none" stroke="{LINE}"/>'
+        f'<rect x="64" y="66" width="28" height="3" rx="1.5" fill="url(#brand)"/>'
+        + t(106, 74, "HITEN BORKAR · ENGINEERING PORTFOLIO", 14, CYAN, 500, mono=True, ls=3)
+        + t(64, 168, "Building systems", 52, INK, 800)
+        + f'<text x="64" y="236" font-size="52" font-weight="800" fill="url(#brand)">that solve real problems.</text>'
+        + t(64, 292, "Computer Science Engineer", 22, SOFT, 500)
+        + chips
+        + f'<path d="M64 392H760" stroke="{LINE}"/>'
+        + stats
+        + f'<rect x="{px}" y="{py}" width="{ps}" height="{ps}" rx="26" fill="url(#brand)" opacity=".55" filter="url(#blur)"/>'
+        f'<rect x="{px - 5}" y="{py - 5}" width="{ps + 10}" height="{ps + 10}" rx="31" fill="none" stroke="url(#brand)" stroke-width="2"/>'
+        f'<image x="{px}" y="{py}" width="{ps}" height="{ps}" preserveAspectRatio="xMidYMid slice" clip-path="url(#portrait-clip)" href="data:image/webp;base64,{b64}"/>'
+    )
+    save("hero.svg", W, H, "Hiten Borkar — Building systems that solve real problems", body)
+
+
+def render_nav():
+    items = [
+        ("nav-portfolio.svg", "Portfolio", lambda x, y: lucide("globe", x, y, 22, CYAN)),
+        ("nav-linkedin.svg", "LinkedIn", lambda x, y: brand("linkedin", x, y, 22, "#58A6FF")),
+        ("nav-leetcode.svg", "LeetCode", lambda x, y: brand("leetcode", x, y, 22, "#FFA116")),
+        ("nav-email.svg", "Email", lambda x, y: lucide("mail", x, y, 22, INDIGO)),
+    ]
+    for file, label, icon in items:
+        start = 6.5 + (159 - (22 + 12 + tw(label, 16, bold=True))) / 2  # centre icon + label in the pill
+        body = (
+            f'<rect x="6.5" y="6.5" width="159" height="43" rx="21.5" fill="{RAISED}" stroke="{LINE}"/>'
+            + icon(round(start, 1), 17)
+            + t(round(start + 34, 1), 34, label, 16, INK, 600)
+        )
+        save(file, 172, 56, label, body)
+
+
+def render_tiles():
+    tiles = [
+        ("build.svg", "BUILD", "Software & systems", "01", INDIGO, "code-xml"),
+        ("data.svg", "DATA", "ML & analytics", "02", CYAN, "brain-circuit"),
+        ("explore.svg", "EXPLORE", "Ideas & research", "03", EMERALD, "compass"),
+    ]
+    for file, label, subtitle, num, color, icon in tiles:
+        body = (
+            f'<defs><radialGradient id="tg" cx="370" cy="30" r="220" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="{color}" stop-opacity=".22"/><stop offset="1" stop-color="{color}" stop-opacity="0"/></radialGradient></defs>'
+            + panel(380, 190, 22, 10, 10)
+            + '<rect x="11" y="11" width="378" height="188" rx="21" fill="url(#tg)"/>'
+            + f'<rect x="34" y="34" width="52" height="52" rx="15" fill="{color}" fill-opacity=".14" stroke="{color}" stroke-opacity=".4"/>'
+            + lucide(icon, 46, 46, 28, color)
+            + t(366, 76, num, 30, DIM, 700, "end", mono=True)
+            + t(34, 120, label, 14, color, 600, mono=True, ls=3)
+            + t(34, 152, subtitle, 26, INK, 700)
+            + t(34, 183, "Explore projects", 15, MUTED, 500)
+            + lucide("arrow-up-right", 34 + tw("Explore projects", 15) + 6, 169, 18, color)
+        )
+        save(file, 400, 210, f"{label} — {subtitle}", body)
+
+
+def render_activity(total, days_count, active, current, best, busiest, monthly):
+    W, H = 1200, 448
+    keys = sorted(monthly)[-12:] or [(date.today() - timedelta(days=30 * i)).strftime("%Y-%m") for i in range(11, -1, -1)]
+    values = [monthly.get(k, 0) for k in keys]
+    maximum = max(values) or 1
+    peak = max(keys, key=lambda k: monthly.get(k, 0))
+    peak_label = datetime.strptime(peak, "%Y-%m").strftime("%B %Y").upper()
+
+    body = (
+        f'<defs><linearGradient id="bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{INDIGO}"/><stop offset="1" stop-color="#4C5BD4"/></linearGradient>'
+        f'<linearGradient id="peak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#67E8F9"/><stop offset="1" stop-color="#0891B2"/></linearGradient></defs>'
+        + panel(W, H, 26, glow=(1000, 60, 380, INDIGO))
+        + lucide("trending-up", 48, 38, 22, CYAN)
+        + t(82, 55, "GITHUB ACTIVITY · LAST 12 MONTHS", 14, MUTED, 500, mono=True, ls=2.5)
+        + t(48, 138, f"{total:,}", 72, INK, 800)
+        + t(48 + tw(f"{total:,}", 72, bold=True) + 18, 138, "contributions", 28, MUTED, 500)
+        + t(48, 172, f"PEAK MONTH · {peak_label}", 13, DIM, 500, mono=True, ls=2)
+    )
+    base, top, x0, span = 376, 206, 48, 744
+    for frac in (0, 0.5, 1):
+        y = base - (base - top) * frac
+        dash = "" if frac == 0 else ' stroke-dasharray="3 6"'
+        body += f'<path d="M{x0} {y:.1f}H{x0 + span}" stroke="{LINE}"{dash}/>'
+    slot = span / 12
+    for i, (key, value) in enumerate(zip(keys, values)):
+        bw = 40
+        x = x0 + i * slot + (slot - bw) / 2
+        h = 0 if value == 0 else max(8, (base - top) * (value / maximum) ** 0.7)
+        is_peak = key == peak and value > 0
+        if h:
+            body += top_bar(round(x, 1), round(base - h, 1), bw, round(h, 1), 9, "url(#peak)" if is_peak else "url(#bar)")
+            body += t(round(x + bw / 2, 1), round(base - h - 10, 1), f"{value:,}", 16 if is_peak else 13, CYAN if is_peak else MUTED, 700 if is_peak else 400, "middle", mono=True)
+        month = datetime.strptime(key, "%Y-%m")
+        body += t(round(x + bw / 2, 1), 402, month.strftime("%b"), 13, MUTED, 400, "middle", mono=True)
+        if i == 0 or month.month == 1:
+            body += t(round(x + bw / 2, 1), 420, month.strftime("%Y"), 12, DIM, 400, "middle", mono=True)
+
+    busy_date = busiest.get("date", "—")
+    try:
+        busy_date = datetime.strptime(busy_date, "%Y-%m-%d").strftime("%d %b").upper()
+    except (ValueError, TypeError):
+        pass
+    body += f'<path d="M834 44V{H - 44}" stroke="{LINE}"/>'
+    blocks = [
+        ("flame", INDIGO, str(best), " days", f"LONGEST STREAK · CURRENT {current}"),
+        ("calendar-check", CYAN, str(active), f" / {days_count}", "DAYS WITH A CONTRIBUTION"),
+        ("zap", EMERALD, str(int(busiest.get("contributionCount", 0))), "", f"BUSIEST DAY · {busy_date}"),
+    ]
+    for i, (icon, color, value, unit, label) in enumerate(blocks):
+        y = 52 + i * 128
+        body += (
+            f'<rect x="872" y="{y}" width="40" height="40" rx="12" fill="{color}" fill-opacity=".14" stroke="{color}" stroke-opacity=".4"/>'
+            + lucide(icon, 881, y + 9, 22, color)
+            + t(930, y + 56, value, 54, INK, 800)
+            + (t(930 + tw(value, 54, bold=True) + 10, y + 56, unit, 22, MUTED, 500) if unit else "")
+            + t(872, y + 88, label, 13, MUTED, 400, mono=True, ls=1.2)
+        )
+    save("activity.svg", W, H, "GitHub activity over the last 12 months", body)
+
+
+def render_heatmap(days, total):
+    W, H = 1200, 340
+    if not days:
+        return
+    last = date.fromisoformat(days[-1]["date"])
+    first = last - timedelta(days=363)
+    first -= timedelta(days=(first.weekday() + 1) % 7)  # back up to a Sunday
+    counts = {d["date"]: int(d.get("contributionCount", 0)) for d in days}
+    level = level_fn(list(counts.values()))
+    peak_day = max(counts, key=counts.get) if counts else None
+    x0, y0, pitch, cell = 88, 142, 20, 16
+    columns = ((last - first).days + 7) // 7
+
+    body = (
+        panel(W, H, 26, glow=(140, 330, 420, CYAN))
+        + lucide("calendar-days", 48, 38, 24, CYAN)
+        + t(84, 58, "Contribution calendar", 26, INK, 700)
+        + t(48, 92, "LAST 52 WEEKS · REFRESHED DAILY", 13, MUTED, 400, mono=True, ls=2)
+        + t(1152, 62, f"{total:,}", 40, CYAN, 800, "end")
+        + t(1152, 90, "CONTRIBUTIONS", 13, MUTED, 400, "end", mono=True, ls=2)
+    )
+
+    # month labels sit above the column that contains the 1st of each month
+    marks = [(0, first)]
+    for offset in range((last - first).days + 1):
+        d = first + timedelta(days=offset)
+        if d.day == 1 and offset >= 7:
+            marks.append((offset // 7, d))
+    shown = []
+    for col, d in marks:
+        if not shown or col - shown[-1][0] >= 3:
+            shown.append((col, d))
+    for col, d in shown:
+        body += t(x0 + col * pitch, 130, d.strftime("%b"), 13, MUTED, 400, mono=True)
+    for row, name in ((1, "Mon"), (3, "Wed"), (5, "Fri")):
+        body += t(48, y0 + row * pitch + 13, name, 12, DIM, 400, mono=True)
+
+    peak_cell = None
+    for col in range(columns):
+        for row in range(7):
+            day = first + timedelta(days=col * 7 + row)
+            if day > last:
+                continue
+            key = day.isoformat()
+            count = counts.get(key, 0)
+            x, y = x0 + col * pitch, y0 + row * pitch
+            label = f"{day.strftime('%A, %B %-d, %Y')}: {count} contribution{'' if count == 1 else 's'}"
+            body += f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" rx="4" fill="{HEAT[level(count)]}"><title>{escape(label)}</title></rect>'
+            if key == peak_day and count > 0:
+                peak_cell = (x, y)
+    if peak_cell:
+        body += f'<rect x="{peak_cell[0] - 2}" y="{peak_cell[1] - 2}" width="{cell + 4}" height="{cell + 4}" rx="6" fill="none" stroke="{INK}" stroke-width="2"/>'
+
+    fy = 318
+    if peak_day:
+        pd = datetime.strptime(peak_day, "%Y-%m-%d").strftime("%d %b %Y").upper()
+        body += t(48, fy, f"PEAK DAY · {pd} · {counts[peak_day]} CONTRIBUTIONS", 13, MUTED, 400, mono=True, ls=1.5)
+    lx = 1152 - tw("More", 13, True) - 12 - (5 * pitch - 4)
+    body += t(lx - 12, fy, "Less", 13, MUTED, 400, "end", mono=True)
+    for j, color in enumerate(HEAT):
+        body += f'<rect x="{lx + j * pitch}" y="{fy - 13}" width="{cell}" height="{cell}" rx="4" fill="{color}"/>'
+    body += t(1152, fy, "More", 13, MUTED, 400, "end", mono=True)
+    save("heatmap.svg", W, H, "GitHub contribution heatmap — last 52 weeks", body)
+
 
 def render_languages(repos):
- totals=defaultdict(int)
- for repo in repos.values():
-  for language,amount in repo.get("languages",{}).items(): totals[language]+=int(amount)
- top=sorted(totals.items(),key=lambda x:x[1],reverse=True)[:6]; total_bytes=sum(totals.values()) or 1
- body=f'<rect width="1200" height="225" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="43" fill="{INK}" font-size="25" class="serif">The code behind the work</text><text x="42" y="69" fill="{TAUPE}" font-size="11" letter-spacing="1">LANGUAGE DISTRIBUTION · FEATURED PUBLIC REPOSITORIES</text>'
- colors=[BLUE,"#86B8D8",CYAN,BLUE,"#6FA7CB",BLUE]
- for i,(language,amount) in enumerate(top):
-  y=104+i*19; width=560*amount/total_bytes
-  body+=f'<text x="42" y="{y+10}" fill="{INK}" font-size="11">{escape(language)}</text><rect x="170" y="{y}" width="560" height="10" rx="5" fill="#DCE4E9"/><rect x="170" y="{y}" width="{width:.1f}" height="10" rx="5" fill="{colors[i]}"/><text x="750" y="{y+10}" fill="{TAUPE}" font-size="10">{100*amount/total_bytes:.1f}%</text>'
- if not top: body+=f'<text x="42" y="125" fill="{TAUPE}" font-size="14">Language data will appear after the first repository sync.</text>'
- body+=f'<text x="900" y="120" fill="{CYAN}" font-size="32" class="serif">{len(totals)}</text><text x="900" y="141" fill="{TAUPE}" font-size="11">LANGUAGES DETECTED</text>'
- save("languages.svg",1200,225,"Programming language distribution",body)
-def render_tile(file,label,subtitle,num,start,end,fg):
- body=f'<defs><linearGradient id="tilebg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{start}"/><stop offset="1" stop-color="{end}"/></linearGradient></defs><rect width="380" height="190" rx="20" fill="url(#tilebg)"/><path d="M24 14 H356" stroke="{CYAN}" stroke-width="2" opacity=".9"/><text x="28" y="42" fill="{fg}" font-size="12" letter-spacing="3">{escape(label)}</text><text x="28" y="91" fill="{fg}" font-size="27" class="serif">{escape(subtitle)}</text><text x="28" y="154" fill="{fg}" font-size="12">EXPLORE PROJECTS ↗</text><text x="335" y="166" text-anchor="end" fill="{CYAN}" font-size="44" class="serif">{num}</text>'
- save(file,380,190,label,body)
+    W = 1200
+    totals = defaultdict(int)
+    for repo in repos.values():
+        for language, amount in repo.get("languages", {}).items():
+            totals[language] += int(amount)
+    ranked = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)
+    grand = sum(totals.values()) or 1
+    shown = ranked[:7]
+    rest = sum(v for _, v in ranked[7:])
+    if rest:
+        shown.append(("Other", rest))
+
+    def color(i, name):
+        return LANG_COLORS.get(name) or FALLBACK_COLORS[i % len(FALLBACK_COLORS)]
+
+    H = 288
+    body = (
+        panel(W, H, 26, glow=(1100, 20, 360, INDIGO))
+        + lucide("code-xml", 48, 38, 22, CYAN)
+        + t(82, 55, "CODE DISTRIBUTION · FEATURED PUBLIC REPOSITORIES", 14, MUTED, 500, mono=True, ls=2.5)
+        + t(48, 108, "The code behind the work", 32, INK, 700)
+        + t(1152, 108, str(len(totals)), 44, CYAN, 800, "end")
+        + t(1152, 132, "LANGUAGES DETECTED", 13, MUTED, 400, "end", mono=True, ls=2)
+    )
+    if not shown:
+        body += t(48, 190, "Language data will appear after the first repository sync.", 16, MUTED)
+        save("languages.svg", W, H, "Programming language distribution", body)
+        return
+
+    bx, bw = 48, 1104
+    body += f'<defs><clipPath id="bar-clip"><rect x="{bx}" y="150" width="{bw}" height="18" rx="9"/></clipPath></defs><g clip-path="url(#bar-clip)"><rect x="{bx}" y="150" width="{bw}" height="18" fill="{RAISED}"/>'
+    cursor = bx
+    for i, (name, amount) in enumerate(shown):
+        w = bw * amount / grand
+        body += f'<rect x="{cursor:.1f}" y="150" width="{max(w - 2, 1):.1f}" height="18" fill="{color(i, name)}"/>'
+        cursor += w
+    body += "</g>"
+
+    col_w = bw / 4
+    for i, (name, amount) in enumerate(shown):
+        cx = bx + (i % 4) * col_w
+        cy = 214 + (i // 4) * 40
+        body += (
+            f'<circle cx="{cx + 7:.1f}" cy="{cy - 5}" r="6" fill="{color(i, name)}"/>'
+            + t(round(cx + 22, 1), cy, name, 16, INK, 500)
+            + t(round(cx + col_w - 28, 1), cy, f"{100 * amount / grand:.1f}%", 15, MUTED, 400, "end", mono=True)
+        )
+    save("languages.svg", W, H, "Programming language distribution", body)
+
+
 def render_repo_cards(repos):
- items=[("repo-traffic.svg","SMART_TRAFFIC_MANAGEMENT_SYSTEM","Smart Traffic Management","Predictive congestion and alternate routing for Nagpur.","React · FastAPI · XGBoost · Leaflet"),("repo-ipl.svg","IPL_CRUNCH","IPL Crunch ’26","Ball-by-ball IPL analytics from raw Cricsheet JSON.","Python · Pandas · Plotly · SciPy"),("repo-blindspot.svg","PROMPTWARS","The Blind Spot","AI-assisted analysis of assumptions and decision biases.","JavaScript · HTML · CSS"),("repo-rental.svg","VEHICLE-RENTAL-SYSTEM","Vehicle Rental System","Flask app with booking rules and automated tests.","Python · Flask · SQLite · pytest")]
- for i,(file,key,title,desc,stack) in enumerate(items,1):
-  data=repos.get(key,{}); stars=int(data.get("stargazers_count",0)); forks=int(data.get("forks_count",0)); updated=data.get("updated_at","—")
-  try: updated=datetime.fromisoformat(updated.replace("Z","+00:00")).strftime("%b %Y")
-  except (ValueError,TypeError): updated="—"
-  body=f'<defs><linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F1F3F4"/><stop offset="1" stop-color="#E4EEF4"/></linearGradient></defs><rect width="560" height="170" rx="18" fill="url(#card)" stroke="{LINE}"/><rect x="0" y="22" width="3" height="126" rx="2" fill="{CYAN}"/><text x="28" y="37" fill="{CYAN}" font-size="10">FEATURED PROJECT / {i:02d}</text><text x="28" y="72" fill="{INK}" font-size="25" class="serif">{escape(title)}</text><text x="28" y="98" fill="{TAUPE}" font-size="12">{escape(desc)}</text><text x="28" y="125" fill="{CYAN}" font-size="11">{escape(stack)}</text><text x="28" y="151" fill="{TAUPE}" font-size="10">★ {stars}   FORKS {forks}   UPDATED {escape(updated)}</text>'
-  save(file,560,170,title,body)
+    items = [
+        ("repo-traffic.svg", "SMART_TRAFFIC_MANAGEMENT_SYSTEM", "Smart Traffic Management", "Predictive congestion and alternate routing for Nagpur.", "React · FastAPI · XGBoost · Leaflet", INDIGO),
+        ("repo-ipl.svg", "IPL_CRUNCH", "IPL Crunch ’26", "Ball-by-ball IPL analytics from raw Cricsheet JSON.", "Python · Pandas · Plotly · SciPy", CYAN),
+        ("repo-blindspot.svg", "PROMPTWARS", "The Blind Spot", "AI-assisted analysis of assumptions and decision biases.", "JavaScript · HTML · CSS", EMERALD),
+        ("repo-rental.svg", "VEHICLE-RENTAL-SYSTEM", "Vehicle Rental System", "Flask app with booking rules and automated tests.", "Python · Flask · SQLite · pytest", "#F59E0B"),
+    ]
+    for i, (file, key, title, desc, stack, color) in enumerate(items, 1):
+        data = repos.get(key, {})
+        stars, forks = int(data.get("stargazers_count", 0)), int(data.get("forks_count", 0))
+        try:
+            updated = datetime.fromisoformat(data.get("updated_at", "").replace("Z", "+00:00")).strftime("%b %Y")
+        except (ValueError, TypeError, AttributeError):
+            updated = "—"
+        ox, oy = 10, 10  # card origin inside the canvas (the margin is the gap between cards)
+        body = (
+            f'<defs><radialGradient id="rg" cx="560" cy="20" r="260" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="{color}" stop-opacity=".18"/><stop offset="1" stop-color="{color}" stop-opacity="0"/></radialGradient></defs>'
+            + panel(580, 216, 22, ox, oy)
+            + f'<rect x="{ox + 1}" y="{oy + 1}" width="578" height="214" rx="21" fill="url(#rg)"/>'
+            + f'<rect x="{ox + 24}" y="{oy + 22}" width="46" height="46" rx="14" fill="{color}" fill-opacity=".14" stroke="{color}" stroke-opacity=".4"/>'
+            + lucide("folder-git-2", ox + 35, oy + 33, 24, color)
+            + t(ox + 556, oy + 52, f"FEATURED · {i:02d}", 13, DIM, 500, "end", mono=True, ls=2)
+            + t(ox + 24, oy + 104, title, 28, INK, 700)
+            + t(ox + 24, oy + 130, desc, 16, MUTED, 400)
+        )
+        cx = ox + 24
+        for tech in stack.split(" · "):
+            w = tw(tech, 13, bold=True) + 24
+            body += (
+                f'<rect x="{cx:.0f}" y="{oy + 146}" width="{w:.0f}" height="28" rx="14" fill="{RAISED}" stroke="{LINE}"/>'
+                + t(round(cx + w / 2), oy + 165, tech, 13, SOFT, 600, "middle")
+            )
+            cx += w + 8
+        fy = oy + 200
+        sx = ox + 24
+        body += lucide("star", sx, fy - 14, 16, "#F59E0B") + t(sx + 22, fy, stars, 14, SOFT, 600, mono=True)
+        fx = sx + 22 + tw(str(stars), 14, True) + 22
+        body += lucide("git-fork", fx, fy - 14, 16, MUTED) + t(fx + 22, fy, forks, 14, SOFT, 600, mono=True)
+        ux = fx + 22 + tw(str(forks), 14, True) + 22
+        body += lucide("clock", ux, fy - 14, 16, MUTED) + t(ux + 22, fy, f"Updated {updated}", 14, MUTED, 400)
+        save(file, 600, 236, title, body)
+
+
+SKILL_GROUPS = [
+    ("LANGUAGES", "code-xml", INDIGO, [
+        ("C", "brand", "c"), ("C++", "brand", "cplusplus"), ("Python", "brand", "python"),
+        ("Java", "brand", "java"), ("JavaScript", "brand", "javascript"), ("SQL", "lucide", "table-properties"),
+    ]),
+    ("WEB DEVELOPMENT", "monitor", CYAN, [("HTML5", "brand", "html5"), ("CSS3", "brand", "css3")]),
+    ("ML & DATA", "brain-circuit", EMERALD, [("Pandas", "brand", "pandas"), ("NumPy", "brand", "numpy"), ("Matplotlib", "brand", "matplotlib")]),
+    ("CS FUNDAMENTALS", "graduation-cap", INDIGO, [
+        ("DSA", "lucide", "binary"), ("OOP", "lucide", "boxes"), ("DBMS", "lucide", "database"),
+        ("Operating Systems", "lucide", "cpu"), ("Computer Networks", "lucide", "network"),
+    ]),
+    ("DESIGN & TOOLS", "wrench", CYAN, [
+        ("UML", "lucide", "shapes"), ("OOD", "lucide", "component"), ("GoF Design Patterns", "lucide", "puzzle"),
+        ("Git", "brand", "git"), ("GitHub", "mono", "github"), ("Linux", "mono", "linux"), ("VS Code", "brand", "vscode"),
+    ]),
+    ("CLOUD · GOOGLE CLOUD", "cloud", EMERALD, [
+        ("Google Cloud", "brand", "googlecloud"), ("Compute Engine", "lucide", "server"),
+        ("Cloud Storage", "lucide", "hard-drive"), ("VPC", "lucide", "shield"), ("Cloud Shell", "lucide", "terminal"),
+    ]),
+]
+
+
+def render_skills():
+    W, pad, cols, gap = 1200, 48, 3, 28
+    col_w = (W - 2 * pad - gap * (cols - 1)) / cols
+    chip_h, chip_gap = 42, 10
+    layouts = []
+    for title, icon, color, skills in SKILL_GROUPS:
+        x, y, rows, row = 0.0, 0.0, [], []
+        for label, kind, name in skills:
+            w = 16 + 22 + 10 + tw(label, 15, bold=True) + 18
+            if x and x + w > col_w:
+                x, y = 0.0, y + chip_h + chip_gap
+            row.append((x, y, w, label, kind, name))
+            x += w + chip_gap
+        layouts.append((title, icon, color, row, y + chip_h))
+
+    row_heights = []
+    for r in range(0, len(layouts), cols):
+        row_heights.append(44 + max(h for *_, h in layouts[r:r + cols]))
+    top, between = 40, 34
+    H = top + sum(row_heights) + between * (len(row_heights) - 1) + 34
+
+    body = panel(W, H, 26, glow=(80, 40, 380, INDIGO))
+    y_cursor = top
+    for ri, r in enumerate(range(0, len(layouts), cols)):
+        for ci, (title, icon, color, chips, _) in enumerate(layouts[r:r + cols]):
+            gx = pad + ci * (col_w + gap)
+            body += lucide(icon, gx, y_cursor - 2, 20, color) + t(gx + 30, y_cursor + 14, title, 14, color, 600, mono=True, ls=2.5)
+            body += f'<path d="M{gx:.0f} {y_cursor + 30}H{gx + col_w:.0f}" stroke="{LINE}"/>'
+            for (cx, cy, w, label, kind, name) in chips:
+                x, y = gx + cx, y_cursor + 44 + cy
+                body += f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{chip_h}" rx="12" fill="{RAISED}" stroke="{LINE}"/>'
+                ix, iy = x + 14, y + (chip_h - 22) / 2
+                if kind == "brand":
+                    body += brand(name, round(ix, 1), round(iy, 1), 22)
+                elif kind == "mono":
+                    body += brand(name, round(ix, 1), round(iy, 1), 22, SOFT)
+                else:
+                    body += lucide(name, round(ix, 1), round(iy, 1), 22, color)
+                body += t(round(x + 14 + 22 + 10, 1), round(y + chip_h / 2 + 5.5, 1), label, 15, INK, 600)
+        y_cursor += row_heights[ri] + between
+        if ri < len(row_heights) - 1:
+            body += f'<path d="M{pad} {y_cursor - between / 2:.0f}H{W - pad}" stroke="{LINE}" stroke-dasharray="2 6"/>'
+    save("skills.svg", W, int(H), "Technical skills", body)
+
+
+def refresh_readme_versions(version):
+    """Bump the ?v= cache-buster on card URLs so GitHub's image proxy refetches them."""
+    if not README.exists():
+        return
+    text = README.read_text(encoding="utf-8")
+    new = re.sub(r"(cards/[\w-]+\.svg)\?v=[\w-]+", rf"\1?v={version}", text)
+    if new != text:
+        README.write_text(new, encoding="utf-8")
+
+
 def main():
- contrib=read_json(DATA,{"total":0,"weeks":[]}); days=flatten(contrib); counts,active,current,best,busiest,monthly=activity_stats(days); total=int(contrib.get("total",sum(counts.values()))); repos=read_json(REPOS,{})
- render_hero(total); render_activity(total,len(days),active,current,best,busiest,monthly); render_heatmap(total,counts); render_heatmap_html(total,days); render_languages(repos)
- render_tile("build.svg","BUILD","Software & systems","01","#F1F3F4","#E3EEF5","#20252B")
- render_tile("data.svg","DATA","ML & analytics","02","#F1F3F4","#D8EAF5","#20252B")
- render_tile("explore.svg","EXPLORE","Ideas & research","03","#F1F3F4","#C7E0F0","#20252B")
- render_repo_cards(repos)
- print(f"Rendered profile cards: {len(days)} contribution days, {total} contributions, {len(repos)} repositories.")
-if __name__=="__main__": main()
+    contrib = read_json(DATA, {"total": 0, "weeks": []})
+    days = flatten(contrib)
+    counts, active, current, best, busiest, monthly = activity_stats(days)
+    total = int(contrib.get("total", sum(counts.values())))
+    repos = read_json(REPOS, {})
+
+    render_hero(total, active, best)
+    render_nav()
+    render_tiles()
+    render_activity(total, len(days), active, current, best, busiest, monthly)
+    render_heatmap(days, total)
+    render_repo_cards(repos)
+    render_languages(repos)
+    render_skills()
+
+    version = (days[-1]["date"] if days else date.today().isoformat()).replace("-", "")
+    refresh_readme_versions(version)
+    print(f"Rendered profile cards: {len(days)} contribution days, {total} contributions, {len(repos)} repositories.")
+
+
+if __name__ == "__main__":
+    main()
