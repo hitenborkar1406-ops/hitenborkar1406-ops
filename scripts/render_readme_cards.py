@@ -100,6 +100,53 @@ def render_heatmap(total,counts):
  body+=f'<text x="1162" y="192" fill="{TAUPE}" font-size="10">MORE</text><text x="42" y="252" fill="{TAUPE}" font-size="10">SUNDAY</text><text x="122" y="252" fill="{TAUPE}" font-size="10">MONDAY → SATURDAY</text>'
  save("heatmap.svg",1200,270,"GitHub contribution heatmap — refreshed daily",body)
 
+def render_heatmap_html(total,days):
+ # GitHub README images do not expose per-cell SVG <title> reliably.
+ # Individual HTML <img title="..."> elements provide native day-by-day hover tooltips.
+ today=max((date.fromisoformat(d["date"]) for d in days),default=date.today())
+ start=today-timedelta(days=363)
+ start-=timedelta(days=(start.weekday()+1)%7)
+ day_map={d["date"]:int(d.get("contributionCount",0)) for d in days}
+ palette=["#E3E8EC","#D2E3EF","#B6D7EB","#9CC6E0","#E4002B"]
+ for level,color in enumerate(palette):
+  body=f'<rect width="16" height="16" rx="4" fill="{color}"/>'
+  save(f"heatmap-cell-{level}.svg",16,16,f"Contribution level {level}",body)
+ weeks=((today-start).days+7)//7
+ version=today.strftime("%Y%m%d")
+ rows=[]
+ month_cells=[]
+ for col in range(weeks):
+  week_start=start+timedelta(days=col*7)
+  label=week_start.strftime("%b") if week_start.day<=7 else ""
+  month_cells.append(f'<td align="left"><sub>{label}</sub></td>')
+ rows.append("<tr>"+"".join(month_cells)+"</tr>")
+ for weekday in range(7):
+  cells=[]
+  for col in range(weeks):
+   day=start+timedelta(days=col*7+weekday)
+   if day>today or day.isoformat() not in day_map:
+    cells.append("<td></td>")
+    continue
+   count=day_map[day.isoformat()]
+   level=0 if count==0 else 1 if count<=2 else 2 if count<=5 else 3 if count<=10 else 4
+   label=day.strftime("%A, %B %-d, %Y")
+   contribution=f"{count} contribution" + ("" if count==1 else "s")
+   tooltip=f"{label}: {contribution}"
+   src=f"cards/heatmap-cell-{level}.svg?v={version}"
+   cells.append(f'<td title="{escape(tooltip, {chr(34): "&quot;"})}" align="center"><img src="{src}" width="13" height="13" alt="" title="{escape(tooltip, {chr(34): "&quot;"})}"/></td>')
+  rows.append("<tr>"+"".join(cells)+"</tr>")
+ table='<table border="0" cellpadding="1" cellspacing="2">\\n'+"\\n".join(rows)+"\\n</table>"
+ block=f'<p><strong>Every day, <em>in sunshine.</em></strong> &nbsp; <sub>LAST 52 WEEKS · DAILY CONTRIBUTIONS · REFRESHED DAILY</sub></p>\\n<p><strong>{total:,}</strong> contributions</p>\\n'+table
+ readme=ROOT/"README.md"
+ if readme.exists():
+  content=readme.read_text(encoding="utf-8")
+  begin="<!-- DAILY-HEATMAP:START -->"; end="<!-- DAILY-HEATMAP:END -->"
+  if begin in content and end in content:
+   before,rest=content.split(begin,1); _,after=rest.split(end,1)
+   readme.write_text(before+begin+"\\n"+block+"\\n"+end+after,encoding="utf-8")
+  else:
+   print("README heatmap markers missing; skipped inline tooltip grid update.")
+
 def render_languages(repos):
  totals=defaultdict(int)
  for repo in repos.values():
@@ -126,7 +173,7 @@ def render_repo_cards(repos):
   save(file,560,170,title,body)
 def main():
  contrib=read_json(DATA,{"total":0,"weeks":[]}); days=flatten(contrib); counts,active,current,best,busiest,monthly=activity_stats(days); total=int(contrib.get("total",sum(counts.values()))); repos=read_json(REPOS,{})
- render_hero(total); render_activity(total,len(days),active,current,best,busiest,monthly); render_heatmap(total,counts); render_languages(repos)
+ render_hero(total); render_activity(total,len(days),active,current,best,busiest,monthly); render_heatmap(total,counts); render_heatmap_html(total,days); render_languages(repos)
  render_tile("build.svg","BUILD","Software & systems","01","#F1F3F4","#E3EEF5","#20252B")
  render_tile("data.svg","DATA","ML & analytics","02","#F1F3F4","#D8EAF5","#20252B")
  render_tile("explore.svg","EXPLORE","Ideas & research","03","#F1F3F4","#C7E0F0","#20252B")
