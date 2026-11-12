@@ -22,7 +22,8 @@
 ## GITHUB ACTIVITY
 
 <img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/activity.svg?v=polar-glacier-racing-20261112" width="100%" alt="Monthly contributions, streaks, active days and busiest day"/>
-<img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/heatmap.svg?v=polar-glacier-racing-20261112" width="100%" alt="Daily GitHub contribution heatmap with per-day counts"/>
+<!-- DAILY-HEATMAP:START -->
+<!-- DAILY-HEATMAP:END -->
 
 ## SELECTED PROJECTS
 
