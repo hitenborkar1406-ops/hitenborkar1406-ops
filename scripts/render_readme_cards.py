@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from xml.sax.saxutils import escape
 
 ROOT=Path(__file__).resolve().parents[1]; OUT=ROOT/"cards"; DATA=ROOT/"data"/"contributions.json"; REPOS=ROOT/"data"/"repos.json"
-BG,INK,CYAN,BLUE,TAUPE,LINE="#1C1D20","#F2F4F1","#FFC928","#F2F4F1","#AEB2B0","#414348"; PANEL="#F2F4F1"
+BG,INK,CYAN,BLUE,TAUPE,LINE="#1C1D20","#F2F4F1","#FFC928","#8F9188","#B8B9B1","#3A3B36"; PANEL="#252622"
 ASCII_ART=ROOT/"data"/"ascii_art.txt"
 def svg(w,h,title,body):
  return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{escape(title)}"><title>{escape(title)}</title><defs><style>text{{font-family:Inter,Arial,sans-serif}}.serif{{font-family:Georgia,serif}}@keyframes rise{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:translateY(0)}}}}@keyframes pulse{{0%,100%{{opacity:.35}}50%{{opacity:1}}}}@keyframes reveal{{from{{opacity:0}}to{{opacity:1}}}}.portrait-row{{opacity:1}}.enter{{animation:rise .8s ease both}}.pulse{{animation:pulse 2.8s ease-in-out infinite}}@media(prefers-reduced-motion:reduce){{*{{animation:none!important;opacity:1!important}}}}</style></defs>{body}</svg>'''
@@ -49,7 +49,7 @@ def render_activity(total,days_count,active,current,best,busiest,monthly):
  baseline=342
  for i,(key,value) in enumerate(zip(keys,values)):
   x=58+i*63
-  height=0 if maximum==0 else 190*value/maximum
+  height=0 if maximum==0 or value==0 else max(8,190*(value/maximum)**0.62)
   y=baseline-height
   fill=CYAN if key==best_month and value>0 else BLUE
   body+=f'<rect x="{x}" y="{y:.1f}" width="48" height="{height:.1f}" rx="6" fill="{fill}"><animate attributeName="height" from="0" to="{height:.1f}" dur=".7s" begin="{i*.04:.2f}s" fill="freeze"/></rect>'
@@ -77,7 +77,7 @@ def render_heatmap(total,counts):
  day_count=(today-start).days+1
  columns=(day_count+6)//7
  maximum=max(counts.values() or [1]) or 1
- palette=["#414348","#62666A","#858B8E","#B8BDB9","#FFC928"]
+ palette=["#343631","#55584F","#77796D","#A9A995","#FFC928"]
  body=f'<rect width="1200" height="270" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="48" fill="{INK}" font-size="30" class="serif">Every day, <tspan fill="{CYAN}" font-style="italic">in sunshine.</tspan></text><text x="1015" y="45" fill="{TAUPE}" font-size="11" letter-spacing="2">REFRESHED DAILY</text><text x="42" y="77" fill="{TAUPE}" font-size="10" letter-spacing="1">LAST 52 WEEKS · DAILY CONTRIBUTIONS</text>'
  month_seen=set()
  for offset in range(day_count):
@@ -106,10 +106,10 @@ def render_languages(repos):
   for language,amount in repo.get("languages",{}).items(): totals[language]+=int(amount)
  top=sorted(totals.items(),key=lambda x:x[1],reverse=True)[:6]; total_bytes=sum(totals.values()) or 1
  body=f'<rect width="1200" height="225" rx="22" fill="{PANEL}" stroke="{LINE}"/><text x="42" y="43" fill="{INK}" font-size="25" class="serif">The code behind the work</text><text x="42" y="69" fill="{TAUPE}" font-size="11" letter-spacing="1">LANGUAGE DISTRIBUTION · FEATURED PUBLIC REPOSITORIES</text>'
- colors=[BLUE,BLUE,CYAN,BLUE,BLUE,BLUE]
+ colors=[INK,BLUE,CYAN,BLUE,INK,BLUE]
  for i,(language,amount) in enumerate(top):
   y=104+i*19; width=560*amount/total_bytes
-  body+=f'<text x="42" y="{y+10}" fill="{INK}" font-size="11">{escape(language)}</text><rect x="170" y="{y}" width="560" height="10" rx="5" fill="#354563"/><rect x="170" y="{y}" width="{width:.1f}" height="10" rx="5" fill="{colors[i]}"/><text x="750" y="{y+10}" fill="{TAUPE}" font-size="10">{100*amount/total_bytes:.1f}%</text>'
+  body+=f'<text x="42" y="{y+10}" fill="{INK}" font-size="11">{escape(language)}</text><rect x="170" y="{y}" width="560" height="10" rx="5" fill="#3A3B36"/><rect x="170" y="{y}" width="{width:.1f}" height="10" rx="5" fill="{colors[i]}"/><text x="750" y="{y+10}" fill="{TAUPE}" font-size="10">{100*amount/total_bytes:.1f}%</text>'
  if not top: body+=f'<text x="42" y="125" fill="{TAUPE}" font-size="14">Language data will appear after the first repository sync.</text>'
  body+=f'<text x="900" y="120" fill="{CYAN}" font-size="32" class="serif">{len(totals)}</text><text x="900" y="141" fill="{TAUPE}" font-size="11">LANGUAGES DETECTED</text>'
  save("languages.svg",1200,225,"Programming language distribution",body)
@@ -122,14 +122,14 @@ def render_repo_cards(repos):
   data=repos.get(key,{}); stars=int(data.get("stargazers_count",0)); forks=int(data.get("forks_count",0)); updated=data.get("updated_at","—")
   try: updated=datetime.fromisoformat(updated.replace("Z","+00:00")).strftime("%b %Y")
   except (ValueError,TypeError): updated="—"
-  body=f'<defs><linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2F4F1"/><stop offset="1" stop-color="#E5E8E4"/></linearGradient></defs><rect width="560" height="170" rx="18" fill="url(#card)" stroke="{LINE}"/><rect x="0" y="22" width="3" height="126" rx="2" fill="{CYAN}"/><text x="28" y="37" fill="{CYAN}" font-size="10">FEATURED PROJECT / {i:02d}</text><text x="28" y="72" fill="{BG}" font-size="25" class="serif">{escape(title)}</text><text x="28" y="98" fill="#53585B" font-size="12">{escape(desc)}</text><text x="28" y="125" fill="{CYAN}" font-size="11">{escape(stack)}</text><text x="28" y="151" fill="#53585B" font-size="10">★ {stars}   FORKS {forks}   UPDATED {escape(updated)}</text>'
+  body=f'<defs><linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#292A25"/><stop offset="1" stop-color="#20211E"/></linearGradient></defs><rect width="560" height="170" rx="18" fill="url(#card)" stroke="{LINE}"/><rect x="0" y="22" width="3" height="126" rx="2" fill="{CYAN}"/><text x="28" y="37" fill="{CYAN}" font-size="10">FEATURED PROJECT / {i:02d}</text><text x="28" y="72" fill="{INK}" font-size="25" class="serif">{escape(title)}</text><text x="28" y="98" fill="{TAUPE}" font-size="12">{escape(desc)}</text><text x="28" y="125" fill="{CYAN}" font-size="11">{escape(stack)}</text><text x="28" y="151" fill="{TAUPE}" font-size="10">★ {stars}   FORKS {forks}   UPDATED {escape(updated)}</text>'
   save(file,560,170,title,body)
 def main():
  contrib=read_json(DATA,{"total":0,"weeks":[]}); days=flatten(contrib); counts,active,current,best,busiest,monthly=activity_stats(days); total=int(contrib.get("total",sum(counts.values()))); repos=read_json(REPOS,{})
  render_hero(total); render_activity(total,len(days),active,current,best,busiest,monthly); render_heatmap(total,counts); render_languages(repos)
- render_tile("build.svg","BUILD","Software & systems","01","#F2F4F1","#E5E8E4","#1C1D20")
- render_tile("data.svg","DATA","ML & analytics","02","#F2F4F1","#E5E8E4","#1C1D20")
- render_tile("explore.svg","EXPLORE","Ideas & research","03","#F2F4F1","#E5E8E4","#1C1D20")
+ render_tile("build.svg","BUILD","Software & systems","01","#292A25","#20211E","#F2F4F1")
+ render_tile("data.svg","DATA","ML & analytics","02","#292A25","#20211E","#F2F4F1")
+ render_tile("explore.svg","EXPLORE","Ideas & research","03","#292A25","#20211E","#F2F4F1")
  render_repo_cards(repos)
  print(f"Rendered profile cards: {len(days)} contribution days, {total} contributions, {len(repos)} repositories.")
 if __name__=="__main__": main()
