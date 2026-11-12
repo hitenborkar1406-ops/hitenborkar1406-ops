@@ -42,54 +42,26 @@
 <table>
   <tr>
     <td width="50%" valign="top">
-      <strong>LANGUAGES</strong><br/><br/>
-      <img height="28" alt="C" src="https://img.shields.io/badge/C-00599C?style=flat-square&logo=c&logoColor=white"/>
-      <img height="28" alt="C++" src="https://img.shields.io/badge/C%2B%2B-00599C?style=flat-square&logo=cplusplus&logoColor=white"/>
-      <img height="28" alt="Python" src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white"/>
-      <img height="28" alt="Java" src="https://img.shields.io/badge/Java-ED8B00?style=flat-square&logo=openjdk&logoColor=white"/>
-      <img height="28" alt="JavaScript" src="https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=20252B"/>
-      <img height="28" alt="SQL" src="https://img.shields.io/badge/SQL-336791?style=flat-square&logo=postgresql&logoColor=white"/>
+      <strong>LANGUAGES</strong><br/><br/><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/c/c-original.svg" width="24" height="24" alt="C" title="C"/> <sub>C</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" width="24" height="24" alt="C++" title="C++"/> <sub>C++</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" width="24" height="24" alt="Python" title="Python"/> <sub>Python</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg" width="24" height="24" alt="Java" title="Java"/> <sub>Java</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg" width="24" height="24" alt="JavaScript" title="JavaScript"/> <sub>JavaScript</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" width="24" height="24" alt="SQL" title="SQL"/> <sub>SQL</sub>&nbsp;&nbsp;
     </td>
     <td width="50%" valign="top">
-      <strong>WEB DEVELOPMENT</strong><br/><br/>
-      <img height="28" alt="HTML5" src="https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white"/>
-      <img height="28" alt="CSS3" src="https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white"/>
+      <strong>WEB DEVELOPMENT</strong><br/><br/><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg" width="24" height="24" alt="HTML5" title="HTML5"/> <sub>HTML5</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg" width="24" height="24" alt="CSS3" title="CSS3"/> <sub>CSS3</sub>&nbsp;&nbsp;
     </td>
   </tr>
   <tr>
-    <td valign="top">
-      <strong>ML &amp; DATA</strong><br/><br/>
-      <img height="28" alt="Pandas" src="https://img.shields.io/badge/Pandas-150458?style=flat-square&logo=pandas&logoColor=white"/>
-      <img height="28" alt="NumPy" src="https://img.shields.io/badge/NumPy-013243?style=flat-square&logo=numpy&logoColor=white"/>
-      <img height="28" alt="Matplotlib" src="https://img.shields.io/badge/Matplotlib-11557C?style=flat-square&logo=matplotlib&logoColor=white"/>
+    <td width="50%" valign="top">
+      <strong>ML &amp; DATA</strong><br/><br/><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/pandas/pandas-original.svg" width="24" height="24" alt="Pandas" title="Pandas"/> <sub>Pandas</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/numpy/numpy-original.svg" width="24" height="24" alt="NumPy" title="NumPy"/> <sub>NumPy</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/matplotlib/matplotlib-original.svg" width="24" height="24" alt="Matplotlib" title="Matplotlib"/> <sub>Matplotlib</sub>&nbsp;&nbsp;
     </td>
-    <td valign="top">
-      <strong>CS FUNDAMENTALS</strong><br/><br/>
-      <img height="28" alt="DSA" src="https://img.shields.io/badge/DSA-9CC6E0?style=flat-square"/>
-      <img height="28" alt="OOP" src="https://img.shields.io/badge/OOP-9CC6E0?style=flat-square"/>
-      <img height="28" alt="DBMS" src="https://img.shields.io/badge/DBMS-9CC6E0?style=flat-square"/>
-      <img height="28" alt="Operating Systems" src="https://img.shields.io/badge/Operating%20Systems-9CC6E0?style=flat-square"/>
-      <img height="28" alt="Computer Networks" src="https://img.shields.io/badge/Computer%20Networks-9CC6E0?style=flat-square"/>
+    <td width="50%" valign="top">
+      <strong>CS FUNDAMENTALS</strong><br/><br/><img src="https://api.iconify.design/mdi/graph-outline.svg?color=%2320252B" width="24" height="24" alt="DSA" title="DSA"/> <sub>DSA</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/code-braces.svg?color=%2320252B" width="24" height="24" alt="OOP" title="OOP"/> <sub>OOP</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/database.svg?color=%2320252B" width="24" height="24" alt="DBMS" title="DBMS"/> <sub>DBMS</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/desktop-tower-monitor.svg?color=%2320252B" width="24" height="24" alt="Operating Systems" title="Operating Systems"/> <sub>Operating Systems</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/lan.svg?color=%2320252B" width="24" height="24" alt="Computer Networks" title="Computer Networks"/> <sub>Computer Networks</sub>&nbsp;&nbsp;
     </td>
   </tr>
   <tr>
-    <td valign="top">
-      <strong>DESIGN &amp; TOOLS</strong><br/><br/>
-      <img height="28" alt="UML" src="https://img.shields.io/badge/UML-9CC6E0?style=flat-square"/>
-      <img height="28" alt="OOD" src="https://img.shields.io/badge/OOD-9CC6E0?style=flat-square"/>
-      <img height="28" alt="GoF Design Patterns" src="https://img.shields.io/badge/GoF%20Patterns-9CC6E0?style=flat-square"/>
-      <img height="28" alt="Git" src="https://img.shields.io/badge/Git-F05032?style=flat-square&logo=git&logoColor=white"/>
-      <img height="28" alt="GitHub" src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/>
-      <img height="28" alt="Linux" src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=20252B"/>
-      <img height="28" alt="VS Code" src="https://img.shields.io/badge/VS%20Code-007ACC?style=flat-square&logo=visualstudiocode&logoColor=white"/>
+    <td width="50%" valign="top">
+      <strong>DESIGN &amp; TOOLS</strong><br/><br/><img src="https://api.iconify.design/mdi/diagram-project.svg?color=%2320252B" width="24" height="24" alt="UML" title="UML"/> <sub>UML</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/cube-outline.svg?color=%2320252B" width="24" height="24" alt="OOD" title="OOD"/> <sub>OOD</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/layers-outline.svg?color=%2320252B" width="24" height="24" alt="GoF Patterns" title="GoF Patterns"/> <sub>GoF Patterns</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg" width="24" height="24" alt="Git" title="Git"/> <sub>Git</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/github/github-original.svg" width="24" height="24" alt="GitHub" title="GitHub"/> <sub>GitHub</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/linux/linux-original.svg" width="24" height="24" alt="Linux" title="Linux"/> <sub>Linux</sub>&nbsp;&nbsp; <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg" width="24" height="24" alt="VS Code" title="VS Code"/> <sub>VS Code</sub>&nbsp;&nbsp;
     </td>
-    <td valign="top">
-      <strong>CLOUD</strong><br/><br/>
-      <img height="28" alt="Google Cloud" src="https://img.shields.io/badge/Google%20Cloud-4285F4?style=flat-square&logo=googlecloud&logoColor=white"/><br/><br/>
-      <img height="26" alt="Compute Engine" src="https://img.shields.io/badge/Compute%20Engine-9CC6E0?style=flat-square"/>
-      <img height="26" alt="Cloud Storage" src="https://img.shields.io/badge/Cloud%20Storage-9CC6E0?style=flat-square"/>
-      <img height="26" alt="VPC" src="https://img.shields.io/badge/VPC-9CC6E0?style=flat-square"/>
-      <img height="26" alt="Cloud Shell" src="https://img.shields.io/badge/Cloud%20Shell-9CC6E0?style=flat-square"/>
+    <td width="50%" valign="top">
+      <strong>CLOUD · GOOGLE CLOUD</strong><br/><br/><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/googlecloud/googlecloud-original.svg" width="24" height="24" alt="Google Cloud" title="Google Cloud"/> <sub>Google Cloud</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/server.svg?color=%2320252B" width="24" height="24" alt="Compute Engine" title="Compute Engine"/> <sub>Compute Engine</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/cloud-upload.svg?color=%2320252B" width="24" height="24" alt="Cloud Storage" title="Cloud Storage"/> <sub>Cloud Storage</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/lan.svg?color=%2320252B" width="24" height="24" alt="VPC" title="VPC"/> <sub>VPC</sub>&nbsp;&nbsp; <img src="https://api.iconify.design/mdi/console.svg?color=%2320252B" width="24" height="24" alt="Cloud Shell" title="Cloud Shell"/> <sub>Cloud Shell</sub>&nbsp;&nbsp;
     </td>
   </tr>
 </table>
