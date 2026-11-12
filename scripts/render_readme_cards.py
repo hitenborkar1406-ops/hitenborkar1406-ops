@@ -29,7 +29,7 @@ REPOS = ROOT / "data" / "repos.json"
 INK, SOFT, MUTED, DIM = "#EAF0FA", "#C5D0E2", "#93A3BC", "#64748B"
 LINE, RAISED = "#243049", "#172136"
 INDIGO, CYAN, EMERALD = "#8B7CFF", "#22D3EE", "#34D399"
-HEAT = ["#1B2740", "#164E63", "#0E7490", "#22D3EE", "#A5F3FC"]  # level 0..4
+HEAT = ["#22304D", "#17667F", "#0891B2", "#22D3EE", "#D1FAFE"]  # level 0..4
 
 SANS = '-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif'
 MONO = 'ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace'
@@ -337,7 +337,7 @@ def render_activity(total, days_count, active, current, best, busiest, monthly):
 
 
 def render_heatmap(days, total):
-    W, H = 1200, 340
+    W, H = 1200, 376
     if not days:
         return
     last = date.fromisoformat(days[-1]["date"])
@@ -346,16 +346,17 @@ def render_heatmap(days, total):
     counts = {d["date"]: int(d.get("contributionCount", 0)) for d in days}
     level = level_fn(list(counts.values()))
     peak_day = max(counts, key=counts.get) if counts else None
-    x0, y0, pitch, cell = 88, 142, 20, 16
+    x0, y0, pitch, cell = 96, 166, 20, 17  # 53 columns end exactly at x=1153
     columns = ((last - first).days + 7) // 7
 
     body = (
-        panel(W, H, 26, glow=(140, 330, 420, CYAN))
-        + lucide("calendar-days", 48, 38, 24, CYAN)
-        + t(84, 58, "Contribution calendar", 26, INK, 700)
-        + t(48, 92, "LAST 52 WEEKS · REFRESHED DAILY", 13, MUTED, 400, mono=True, ls=2)
-        + t(1152, 62, f"{total:,}", 40, CYAN, 800, "end")
-        + t(1152, 90, "CONTRIBUTIONS", 13, MUTED, 400, "end", mono=True, ls=2)
+        panel(W, H, 26, glow=(1000, 30, 380, INDIGO))
+        + lucide("calendar-days", 48, 40, 30, CYAN)
+        + t(92, 66, "Contribution calendar", 32, INK, 700)
+        + t(48, 108, "LAST 52 WEEKS · REFRESHED DAILY", 15, MUTED, 500, mono=True, ls=2)
+        + t(1152, 70, f"{total:,}", 52, CYAN, 800, "end")
+        + t(1152, 104, "CONTRIBUTIONS", 15, MUTED, 500, "end", mono=True, ls=2)
+        + f'<path d="M48 126H1152" stroke="{LINE}"/>'
     )
 
     # month labels sit above the column that contains the 1st of each month
@@ -369,9 +370,9 @@ def render_heatmap(days, total):
         if not shown or col - shown[-1][0] >= 3:
             shown.append((col, d))
     for col, d in shown:
-        body += t(x0 + col * pitch, 130, d.strftime("%b"), 13, MUTED, 400, mono=True)
+        body += t(x0 + col * pitch, 154, d.strftime("%b"), 16, SOFT, 500, mono=True)
     for row, name in ((1, "Mon"), (3, "Wed"), (5, "Fri")):
-        body += t(48, y0 + row * pitch + 13, name, 12, DIM, 400, mono=True)
+        body += t(48, y0 + row * pitch + 13, name, 15, MUTED, 500, mono=True)
 
     peak_cell = None
     for col in range(columns):
@@ -387,17 +388,20 @@ def render_heatmap(days, total):
             if key == peak_day and count > 0:
                 peak_cell = (x, y)
     if peak_cell:
-        body += f'<rect x="{peak_cell[0] - 2}" y="{peak_cell[1] - 2}" width="{cell + 4}" height="{cell + 4}" rx="6" fill="none" stroke="{INK}" stroke-width="2"/>'
+        body += f'<rect x="{peak_cell[0] - 2.5}" y="{peak_cell[1] - 2.5}" width="{cell + 5}" height="{cell + 5}" rx="6" fill="none" stroke="{INK}" stroke-width="2"/>'
 
-    fy = 318
+    fy = 348
     if peak_day:
         pd = datetime.strptime(peak_day, "%Y-%m-%d").strftime("%d %b %Y").upper()
-        body += t(48, fy, f"PEAK DAY · {pd} · {counts[peak_day]} CONTRIBUTIONS", 13, MUTED, 400, mono=True, ls=1.5)
-    lx = 1152 - tw("More", 13, True) - 12 - (5 * pitch - 4)
-    body += t(lx - 12, fy, "Less", 13, MUTED, 400, "end", mono=True)
+        body += (
+            f'<rect x="48" y="{fy - 14}" width="17" height="17" rx="4" fill="{HEAT[4]}" stroke="{INK}" stroke-width="2"/>'
+            + t(76, fy, f"PEAK DAY · {pd} · {counts[peak_day]} CONTRIBUTIONS", 15, SOFT, 500, mono=True, ls=1.5)
+        )
+    lx = 1152 - tw("More", 15, True) - 14 - (5 * pitch - 3)
+    body += t(lx - 14, fy, "Less", 15, MUTED, 500, "end", mono=True)
     for j, color in enumerate(HEAT):
-        body += f'<rect x="{lx + j * pitch}" y="{fy - 13}" width="{cell}" height="{cell}" rx="4" fill="{color}"/>'
-    body += t(1152, fy, "More", 13, MUTED, 400, "end", mono=True)
+        body += f'<rect x="{lx + j * pitch:.1f}" y="{fy - 14}" width="{cell}" height="{cell}" rx="4" fill="{color}"/>'
+    body += t(1152, fy, "More", 15, MUTED, 500, "end", mono=True)
     save("heatmap.svg", W, H, "GitHub contribution heatmap — last 52 weeks", body)
 
 
