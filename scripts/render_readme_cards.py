@@ -101,8 +101,7 @@ def render_heatmap(total,counts):
  save("heatmap.svg",1200,270,"GitHub contribution heatmap — refreshed daily",body)
 
 def render_heatmap_html(total,days):
- # GitHub README images do not expose per-cell SVG <title> reliably.
- # Individual HTML <img title="..."> elements provide native day-by-day hover tooltips.
+ # Individual HTML images expose native per-day title tooltips in GitHub README.
  today=max((date.fromisoformat(d["date"]) for d in days),default=date.today())
  start=today-timedelta(days=363)
  start-=timedelta(days=(start.weekday()+1)%7)
@@ -113,37 +112,30 @@ def render_heatmap_html(total,days):
   save(f"heatmap-cell-{level}.svg",16,16,f"Contribution level {level}",body)
  weeks=((today-start).days+7)//7
  version=today.strftime("%Y%m%d")
- rows=[]
- month_cells=[]
- for col in range(weeks):
-  week_start=start+timedelta(days=col*7)
-  label=week_start.strftime("%b") if week_start.day<=7 else ""
-  month_cells.append(f'<td align="left"><sub>{label}</sub></td>')
- rows.append("<tr>"+"".join(month_cells)+"</tr>")
+ lines=[]
  for weekday in range(7):
   cells=[]
   for col in range(weeks):
    day=start+timedelta(days=col*7+weekday)
    if day>today or day.isoformat() not in day_map:
-    cells.append("<td></td>")
+    cells.append('<img src="cards/heatmap-cell-0.svg" width="11" height="11" alt=""/>')
     continue
    count=day_map[day.isoformat()]
    level=0 if count==0 else 1 if count<=2 else 2 if count<=5 else 3 if count<=10 else 4
-   label=day.strftime("%A, %B %-d, %Y")
+   day_label=day.strftime("%A, %B %-d, %Y")
    contribution=f"{count} contribution" + ("" if count==1 else "s")
-   tooltip=f"{label}: {contribution}"
+   tooltip=f"{day_label}: {contribution}"
    src=f"cards/heatmap-cell-{level}.svg?v={version}"
-   cells.append(f'<td title="{escape(tooltip, {chr(34): "&quot;"})}" align="center"><img src="{src}" width="13" height="13" alt="" title="{escape(tooltip, {chr(34): "&quot;"})}"/></td>')
-  rows.append("<tr>"+"".join(cells)+"</tr>")
- table='<table border="0" cellpadding="1" cellspacing="2">\n'+"\n".join(rows)+"\n</table>"
- block=f'<p><strong>Every day, <em>in sunshine.</em></strong> &nbsp; <sub>LAST 52 WEEKS · DAILY CONTRIBUTIONS · REFRESHED DAILY</sub></p>\n<p><strong>{total:,}</strong> contributions</p>\n'+table
+   cells.append(f'<img src="{src}" width="11" height="11" alt="" title="{escape(tooltip, {chr(34): "&quot;"})}"/>')
+  lines.append("<p>"+"&nbsp;".join(cells)+"</p>")
+ block=f'<p><strong>Every day, <em>in sunshine.</em></strong> &nbsp; <sub>LAST 52 WEEKS · DAILY CONTRIBUTIONS · REFRESHED DAILY</sub></p>\\n<p><strong>{total:,}</strong> contributions</p>\\n'+"\\n".join(lines)
  readme=ROOT/"README.md"
  if readme.exists():
   content=readme.read_text(encoding="utf-8")
   begin="<!-- DAILY-HEATMAP:START -->"; end="<!-- DAILY-HEATMAP:END -->"
   if begin in content and end in content:
    before,rest=content.split(begin,1); _,after=rest.split(end,1)
-   readme.write_text(before+begin+"\n"+block+"\n"+end+after,encoding="utf-8")
+   readme.write_text(before+begin+"\\n"+block+"\\n"+end+after,encoding="utf-8")
   else:
    print("README heatmap markers missing; skipped inline tooltip grid update.")
 
