@@ -128,14 +128,14 @@ def render_heatmap_html(total,days):
    src=f"cards/heatmap-cell-{level}.svg?v={version}"
    cells.append(f'<img src="{src}" width="11" height="11" alt="" title="{escape(tooltip, {chr(34): "&quot;"})}"/>')
   lines.append("<p>"+"&nbsp;".join(cells)+"</p>")
- block=f'<p><strong>Every day, <em>in sunshine.</em></strong> &nbsp; <sub>LAST 52 WEEKS · DAILY CONTRIBUTIONS · REFRESHED DAILY</sub></p>\\n<p><strong>{total:,}</strong> contributions</p>\\n'+"\\n".join(lines)
+ block=f'<p><strong>Every day, <em>in sunshine.</em></strong> &nbsp; <sub>LAST 52 WEEKS · DAILY CONTRIBUTIONS · REFRESHED DAILY</sub></p>\n<p><strong>{total:,}</strong> contributions</p>\n'+"\n".join(lines)
  readme=ROOT/"README.md"
  if readme.exists():
   content=readme.read_text(encoding="utf-8")
   begin="<!-- DAILY-HEATMAP:START -->"; end="<!-- DAILY-HEATMAP:END -->"
   if begin in content and end in content:
    before,rest=content.split(begin,1); _,after=rest.split(end,1)
-   readme.write_text(before+begin+"\\n"+block+"\\n"+end+after,encoding="utf-8")
+   readme.write_text(before+begin+"\n"+block+"\n"+end+after,encoding="utf-8")
   else:
    print("README heatmap markers missing; skipped inline tooltip grid update.")
 
