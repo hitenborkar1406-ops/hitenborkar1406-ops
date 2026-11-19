@@ -25,10 +25,11 @@ ICONS = ROOT / "assets" / "icons"
 README = ROOT / "README.md"
 DATA = ROOT / "data" / "contributions.json"
 REPOS = ROOT / "data" / "repos.json"
+WINDOW = 365  # every card reports the same fixed 365-day window
 
 # ── Theme: Desert Sand 60 / Olive Drab 30 / Signal Yellow 10 ─────────────────
 SAND, OLIVE, YELLOW = "#D8C3A0", "#5B5E3C", "#FFD21F"
-INK, SOFT, MUTED, DIM = "#2B2A1C", "#454330", "#5F5A40", "#8A8164"
+INK, SOFT, MUTED, DIM = "#2B2A1C", "#454330", "#4E4930", "#5C563B"
 CREAM = "#F3EAD6"  # text on olive
 LINE, RAISED = "#BDA980", "#E8DBC2"
 HEAT = ["#C8B28A", "#B0AC7B", "#878B5E", "#5B5E3C", "#FFD21F"]  # level 0..4
@@ -177,8 +178,10 @@ def flatten(data):
 def activity_stats(days):
     counts = {d["date"]: int(d.get("contributionCount", 0)) for d in days}
     active = {date.fromisoformat(k) for k, v in counts.items() if v > 0}
-    today = date.today()
-    cursor = today if today in active else today - timedelta(days=1)
+    # Anchor on the last day in the data, not the wall clock, so the result never depends on when
+    # the card is rendered. The newest day may still be filling up, so an empty one doesn't break a streak.
+    latest = date.fromisoformat(days[-1]["date"]) if days else date.today()
+    cursor = latest if latest in active else latest - timedelta(days=1)
     current = 0
     while cursor in active:
         current += 1
@@ -216,17 +219,17 @@ def render_hero(total, active, best):
 
     chips, cx = "", 64
     for label in ("Full-stack", "Applied ML", "Data"):
-        w = tw(label, 15, bold=True) + 36
+        w = tw(label, 17, bold=True) + 40
         chips += (
-            f'<rect x="{cx}" y="312" width="{w:.0f}" height="36" rx="18" fill="{RAISED}" stroke="{LINE}"/>'
-            + t(cx + w / 2, 336, label, 15, SOFT, 600, "middle")
+            f'<rect x="{cx}" y="309" width="{w:.0f}" height="42" rx="21" fill="{RAISED}" stroke="{LINE}"/>'
+            + t(cx + w / 2, 336, label, 17, SOFT, 600, "middle")
         )
         cx += w + 12
 
     stats = ""
-    for i, (value, label) in enumerate(((f"{total:,}", "CONTRIBUTIONS · 12 MO"), (str(active), "ACTIVE DAYS"), (f"{best}", "LONGEST STREAK"))):
+    for i, (value, label) in enumerate(((f"{total:,}", "LAST 365 DAYS"), (str(active), "ACTIVE DAYS"), (f"{best}", "LONGEST STREAK"))):
         x = 64 + i * 232
-        stats += t(x, 446, value, 40, INK, 800) + t(x, 474, label, 13, MUTED, 600, mono=True, ls=1.5)
+        stats += t(x, 446, value, 40, INK, 800) + t(x, 474, label, 15, MUTED, 600, mono=True, ls=1.5)
     for x in (280, 512):
         stats += f'<path d="M{x} 418V478" stroke="{LINE}"/>'
 
@@ -246,7 +249,7 @@ def render_hero(total, active, best):
         f'<rect width="{W}" height="{H}" fill="url(#g1)"/><rect width="{W}" height="{H}" fill="url(#g2)"/></g>'
         f'<rect x=".5" y=".5" width="{W - 1}" height="{H - 1}" rx="28" fill="none" stroke="{LINE}"/>'
         f'<rect x="64" y="66" width="28" height="4" rx="2" fill="{OLIVE}"/>'
-        + t(106, 74, "HITEN BORKAR · ENGINEERING PORTFOLIO", 14, OLIVE, 700, ls=3)
+        + t(106, 74, "HITEN BORKAR · ENGINEERING PORTFOLIO", 16, OLIVE, 700, ls=3)
         + t(64, 168, "Building systems", 52, INK, 800)
         + f'<rect x="58" y="206" width="{hl_w + 12:.0f}" height="26" rx="8" fill="{YELLOW}" fill-opacity=".9"/>'
         + t(64, 236, line2, 52, OLIVE, 800)
@@ -263,17 +266,17 @@ def render_hero(total, active, best):
 
 def render_nav():
     items = [
-        ("nav-portfolio.svg", "Portfolio", lambda x, y: lucide("globe", x, y, 22, YELLOW)),
-        ("nav-linkedin.svg", "LinkedIn", lambda x, y: brand("linkedin", x, y, 22, YELLOW)),
-        ("nav-leetcode.svg", "LeetCode", lambda x, y: brand("leetcode", x, y, 22, YELLOW)),
-        ("nav-email.svg", "Email", lambda x, y: lucide("mail", x, y, 22, YELLOW)),
+        ("nav-portfolio.svg", "Portfolio", lambda x, y: lucide("globe", x, y, 24, YELLOW)),
+        ("nav-linkedin.svg", "LinkedIn", lambda x, y: brand("linkedin", x, y, 24, YELLOW)),
+        ("nav-leetcode.svg", "LeetCode", lambda x, y: brand("leetcode", x, y, 24, YELLOW)),
+        ("nav-email.svg", "Email", lambda x, y: lucide("mail", x, y, 24, YELLOW)),
     ]
     for file, label, icon in items:
-        start = 6.5 + (159 - (22 + 12 + tw(label, 16, bold=True))) / 2  # centre icon + label in the pill
+        start = 6.5 + (159 - (24 + 12 + tw(label, 18, bold=True))) / 2  # centre icon + label in the pill
         body = (
             f'<rect x="6.5" y="6.5" width="159" height="43" rx="21.5" fill="url(#olive)" stroke="#4A4D30"/>'
-            + icon(round(start, 1), 17)
-            + t(round(start + 34, 1), 34, label, 16, CREAM, 700)
+            + icon(round(start, 1), 16)
+            + t(round(start + 36, 1), 34.5, label, 18, CREAM, 700)
         )
         save(file, 172, 56, label, body)
 
@@ -284,26 +287,26 @@ def render_tiles():
         ("build.svg", "BUILD", "Software & systems", "01", "code-xml", dict(
             fill="url(#panel)", stroke=LINE, tile="url(#olive)", glyph=YELLOW, label=OLIVE, title=INK, foot=MUTED, arrow=OLIVE, num=DIM)),
         ("data.svg", "DATA", "ML & analytics", "02", "brain-circuit", dict(
-            fill="url(#olive)", stroke="#4A4D30", tile=YELLOW, glyph=OLIVE, label=YELLOW, title=CREAM, foot="#D9D2B8", arrow=YELLOW, num="#8E9168")),
+            fill="url(#olive)", stroke="#4A4D30", tile=YELLOW, glyph=OLIVE, label=YELLOW, title=CREAM, foot="#D9D2B8", arrow=YELLOW, num="#D6D9AE")),
         ("explore.svg", "EXPLORE", "Ideas & research", "03", "compass", dict(
-            fill="url(#yellow)", stroke="#D9AA00", tile="url(#olive)", glyph=YELLOW, label=OLIVE, title=INK, foot=SOFT, arrow=INK, num="#B8900A")),
+            fill="url(#yellow)", stroke="#D9AA00", tile="url(#olive)", glyph=YELLOW, label=OLIVE, title=INK, foot=SOFT, arrow=INK, num="#6B5000")),
     ]
     for file, label, subtitle, num, icon, c in tiles:
         body = (
             panel(380, 190, 22, 10, 10, fill=c["fill"], stroke=c["stroke"])
             + icon_tile(34, 34, 52, icon, 28, fill=c["tile"], glyph=c["glyph"])
             + t(366, 76, num, 30, c["num"], 800, "end")
-            + t(34, 120, label, 14, c["label"], 700, mono=True, ls=3)
-            + t(34, 152, subtitle, 26, c["title"], 800)
-            + t(34, 183, "Explore projects", 15, c["foot"], 600)
-            + lucide("arrow-up-right", 34 + tw("Explore projects", 15, bold=True) + 6, 169, 18, c["arrow"])
+            + t(34, 120, label, 17, c["label"], 700, mono=True, ls=2.5)
+            + t(34, 154, subtitle, 28, c["title"], 800)
+            + t(34, 185, "Explore projects", 18, c["foot"], 600)
+            + lucide("arrow-up-right", 34 + tw("Explore projects", 18, bold=True) + 6, 168, 20, c["arrow"])
         )
         save(file, 400, 210, f"{label} — {subtitle}", body)
 
 
 def render_activity(total, days_count, active, current, best, busiest, monthly):
     W, H = 1200, 448
-    keys = sorted(monthly)[-12:] or [(date.today() - timedelta(days=30 * i)).strftime("%Y-%m") for i in range(11, -1, -1)]
+    keys = sorted(monthly) or [(date.today() - timedelta(days=30 * i)).strftime("%Y-%m") for i in range(11, -1, -1)]
     values = [monthly.get(k, 0) for k in keys]
     maximum = max(values) or 1
     peak = max(keys, key=lambda k: monthly.get(k, 0))
@@ -314,29 +317,29 @@ def render_activity(total, days_count, active, current, best, busiest, monthly):
         '<linearGradient id="peak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE266"/><stop offset="1" stop-color="#F2BE00"/></linearGradient></defs>'
         + panel(W, H, 26, glow=(1000, 40, 420, YELLOW, 0.30))
         + lucide("trending-up", 48, 38, 22, OLIVE)
-        + t(82, 55, "GITHUB ACTIVITY · LAST 12 MONTHS", 14, MUTED, 700, ls=2.5)
+        + t(82, 55, "GITHUB ACTIVITY · LAST 365 DAYS", 16, MUTED, 700, ls=2.5)
         + t(48, 138, f"{total:,}", 72, INK, 800)
         + t(48 + tw(f"{total:,}", 72, bold=True) + 18, 138, "contributions", 28, OLIVE, 700)
-        + t(48, 172, f"PEAK MONTH · {peak_label}", 13, MUTED, 600, ls=2)
+        + t(48, 172, f"PEAK MONTH · {peak_label}", 15, MUTED, 600, ls=2)
     )
     base, top, x0, span = 376, 206, 48, 744
     for frac in (0, 0.5, 1):
         y = base - (base - top) * frac
         dash = "" if frac == 0 else ' stroke-dasharray="3 6"'
         body += f'<path d="M{x0} {y:.1f}H{x0 + span}" stroke="{LINE}"{dash}/>'
-    slot = span / 12
+    slot = span / max(len(keys), 1)
     for i, (key, value) in enumerate(zip(keys, values)):
-        bw = 40
+        bw = min(40, slot - 10)
         x = x0 + i * slot + (slot - bw) / 2
         h = 0 if value == 0 else max(8, (base - top) * (value / maximum) ** 0.7)
         is_peak = key == peak and value > 0
         if h:
             body += top_bar(round(x, 1), round(base - h, 1), bw, round(h, 1), 9, "url(#peak)" if is_peak else "url(#bar)")
-            body += t(round(x + bw / 2, 1), round(base - h - 10, 1), f"{value:,}", 16 if is_peak else 13, INK if is_peak else MUTED, 800 if is_peak else 600, "middle")
+            body += t(round(x + bw / 2, 1), round(base - h - 10, 1), f"{value:,}", 18 if is_peak else 15, INK if is_peak else MUTED, 800 if is_peak else 600, "middle")
         month = datetime.strptime(key, "%Y-%m")
-        body += t(round(x + bw / 2, 1), 402, month.strftime("%b"), 13, MUTED, 600, "middle")
+        body += t(round(x + bw / 2, 1), 402, month.strftime("%b"), 15, MUTED, 600, "middle")
         if i == 0 or month.month == 1:
-            body += t(round(x + bw / 2, 1), 420, month.strftime("%Y"), 12, DIM, 600, "middle")
+            body += t(round(x + bw / 2, 1), 420, month.strftime("%Y"), 14, DIM, 600, "middle")
 
     busy_date = busiest.get("date", "—")
     try:
@@ -345,7 +348,7 @@ def render_activity(total, days_count, active, current, best, busiest, monthly):
         pass
     body += f'<path d="M834 44V{H - 44}" stroke="{LINE}"/>'
     blocks = [
-        ("flame", str(best), " days", f"LONGEST STREAK · CURRENT {current}"),
+        ("flame", str(best), " days", f"LONGEST STREAK · NOW {current}"),
         ("calendar-check", str(active), f" / {days_count}", "DAYS WITH A CONTRIBUTION"),
         ("zap", str(int(busiest.get("contributionCount", 0))), "", f"BUSIEST DAY · {busy_date}"),
     ]
@@ -355,7 +358,7 @@ def render_activity(total, days_count, active, current, best, busiest, monthly):
             icon_tile(872, y, 40, icon, 22)
             + t(930, y + 56, value, 54, INK, 800)
             + (t(930 + tw(value, 54, bold=True) + 10, y + 56, unit, 22, OLIVE, 700) if unit else "")
-            + t(872, y + 88, label, 13, MUTED, 600, ls=1.2)
+            + t(872, y + 88, label, 14, MUTED, 600, ls=0.8)
         )
     save("activity.svg", W, H, "GitHub activity over the last 12 months", body)
 
@@ -365,8 +368,8 @@ def render_heatmap(days, total):
     if not days:
         return
     last = date.fromisoformat(days[-1]["date"])
-    first = last - timedelta(days=363)
-    first -= timedelta(days=(first.weekday() + 1) % 7)  # back up to a Sunday
+    win_start = date.fromisoformat(days[0]["date"])
+    first = win_start - timedelta(days=(win_start.weekday() + 1) % 7)  # back up to a Sunday
     counts = {d["date"]: int(d.get("contributionCount", 0)) for d in days}
     level = level_fn(list(counts.values()))
     peak_day = max(counts, key=counts.get) if counts else None
@@ -377,14 +380,14 @@ def render_heatmap(days, total):
         panel(W, H, 26, glow=(1200, -40, 300, YELLOW, 0.14))  # kept faint so yellow cells stay crisp
         + icon_tile(48, 38, 36, "calendar-days", 20)
         + t(98, 66, "Contribution calendar", 32, INK, 800)
-        + t(48, 108, "LAST 52 WEEKS · REFRESHED DAILY", 15, MUTED, 700, ls=2)
+        + t(48, 108, "LAST 365 DAYS · REFRESHED DAILY", 15, MUTED, 700, ls=2)
         + t(1152, 70, f"{total:,}", 52, OLIVE, 800, "end")
         + t(1152, 104, "CONTRIBUTIONS", 15, MUTED, 700, "end", ls=2)
         + f'<path d="M48 126H1152" stroke="{LINE}"/>'
     )
 
     # month labels sit above the column that contains the 1st of each month
-    marks = [(0, first)]
+    marks = [(0, win_start)]
     for offset in range((last - first).days + 1):
         d = first + timedelta(days=offset)
         if d.day == 1 and offset >= 7:
@@ -402,7 +405,7 @@ def render_heatmap(days, total):
     for col in range(columns):
         for row in range(7):
             day = first + timedelta(days=col * 7 + row)
-            if day > last:
+            if day > last or day < win_start:
                 continue
             key = day.isoformat()
             count = counts.get(key, 0)
@@ -426,7 +429,7 @@ def render_heatmap(days, total):
     for j, color in enumerate(HEAT):
         body += f'<rect x="{lx + j * pitch:.1f}" y="{fy - 14}" width="{cell}" height="{cell}" rx="4" fill="{color}"/>'
     body += t(1152, fy, "More", 15, MUTED, 600, "end")
-    save("heatmap.svg", W, H, "GitHub contribution heatmap — last 52 weeks", body)
+    save("heatmap.svg", W, H, "GitHub contribution heatmap — last 365 days", body)
 
 
 def render_languages(repos):
@@ -449,10 +452,10 @@ def render_languages(repos):
     body = (
         panel(W, H, 26, glow=(1100, 20, 400, YELLOW, 0.28))
         + lucide("code-xml", 48, 38, 22, OLIVE)
-        + t(82, 55, "CODE DISTRIBUTION · FEATURED PUBLIC REPOSITORIES", 14, MUTED, 700, ls=2.5)
+        + t(82, 55, "CODE DISTRIBUTION · FEATURED PUBLIC REPOSITORIES", 16, MUTED, 700, ls=2.5)
         + t(48, 108, "The code behind the work", 32, INK, 800)
         + t(1152, 108, str(len(totals)), 44, OLIVE, 800, "end")
-        + t(1152, 132, "LANGUAGES DETECTED", 13, MUTED, 700, "end", ls=2)
+        + t(1152, 132, "LANGUAGES DETECTED", 15, MUTED, 700, "end", ls=2)
     )
     if not shown:
         body += t(48, 190, "Language data will appear after the first repository sync.", 16, MUTED)
@@ -474,8 +477,8 @@ def render_languages(repos):
         cy = 214 + (i // 4) * 40
         body += (
             f'<circle cx="{cx + 7:.1f}" cy="{cy - 5}" r="6" fill="{color(i, name)}"/>'
-            + t(round(cx + 22, 1), cy, name, 16, INK, 600)
-            + t(round(cx + col_w - 28, 1), cy, f"{100 * amount / grand:.1f}%", 15, MUTED, 600, "end")
+            + t(round(cx + 22, 1), cy, name, 18, INK, 600)
+            + t(round(cx + col_w - 28, 1), cy, f"{100 * amount / grand:.1f}%", 17, MUTED, 600, "end")
         )
     save("languages.svg", W, H, "Programming language distribution", body)
 
@@ -498,25 +501,25 @@ def render_repo_cards(repos):
         body = (
             panel(580, 216, 22, ox, oy, glow=(ox + 560, oy + 10, 280, YELLOW, 0.30))
             + icon_tile(ox + 24, oy + 22, 46, "folder-git-2", 24)
-            + t(ox + 556, oy + 52, f"FEATURED · {i:02d}", 13, DIM, 700, "end", ls=2)
+            + t(ox + 556, oy + 52, f"FEATURED · {i:02d}", 15, DIM, 700, "end", ls=2)
             + t(ox + 24, oy + 104, title, 28, INK, 800)
             + t(ox + 24, oy + 130, desc, 16, MUTED, 500)
         )
         cx = ox + 24
         for tech in stack.split(" · "):
-            w = tw(tech, 13, bold=True) + 24
+            w = tw(tech, 14, bold=True) + 26
             body += (
                 f'<rect x="{cx:.0f}" y="{oy + 146}" width="{w:.0f}" height="28" rx="14" fill="{RAISED}" stroke="{LINE}"/>'
-                + t(round(cx + w / 2), oy + 165, tech, 13, SOFT, 700, "middle")
+                + t(round(cx + w / 2), oy + 165, tech, 14, SOFT, 700, "middle")
             )
             cx += w + 8
         fy = oy + 200
         sx = ox + 24
-        body += lucide("star", sx, fy - 14, 16, OLIVE) + t(sx + 22, fy, stars, 14, INK, 700)
-        fx = sx + 22 + tw(str(stars), 14, True) + 22
-        body += lucide("git-fork", fx, fy - 14, 16, OLIVE) + t(fx + 22, fy, forks, 14, INK, 700)
-        ux = fx + 22 + tw(str(forks), 14, True) + 22
-        body += lucide("clock", ux, fy - 14, 16, MUTED) + t(ux + 22, fy, f"Updated {updated}", 14, MUTED, 500)
+        body += lucide("star", sx, fy - 14, 16, OLIVE) + t(sx + 22, fy, stars, 16, INK, 700)
+        fx = sx + 22 + tw(str(stars), 16, True) + 22
+        body += lucide("git-fork", fx, fy - 14, 16, OLIVE) + t(fx + 22, fy, forks, 16, INK, 700)
+        ux = fx + 22 + tw(str(forks), 16, True) + 22
+        body += lucide("clock", ux, fy - 14, 16, MUTED) + t(ux + 22, fy, f"Updated {updated}", 16, MUTED, 500)
         save(file, 600, 236, title, body)
 
 
@@ -545,12 +548,12 @@ SKILL_GROUPS = [
 def render_skills():
     W, pad, cols, gap = 1200, 48, 3, 28
     col_w = (W - 2 * pad - gap * (cols - 1)) / cols
-    chip_h, chip_gap = 42, 10
+    chip_h, chip_gap = 46, 10
     layouts = []
     for title, icon, skills in SKILL_GROUPS:
         x, y, rows, row = 0.0, 0.0, [], []
         for label, kind, name in skills:
-            w = 16 + 22 + 10 + tw(label, 15, bold=True) + 18
+            w = 16 + 22 + 10 + tw(label, 17, bold=True) + 18
             if x and x + w > col_w:
                 x, y = 0.0, y + chip_h + chip_gap
             row.append((x, y, w, label, kind, name))
@@ -568,7 +571,7 @@ def render_skills():
     for ri, r in enumerate(range(0, len(layouts), cols)):
         for ci, (title, icon, chips, _) in enumerate(layouts[r:r + cols]):
             gx = pad + ci * (col_w + gap)
-            body += lucide(icon, gx, y_cursor - 2, 20, OLIVE) + t(gx + 30, y_cursor + 14, title, 14, OLIVE, 800, ls=2.5)
+            body += lucide(icon, gx, y_cursor - 2, 20, OLIVE) + t(gx + 30, y_cursor + 14, title, 16, OLIVE, 800, ls=2.5)
             body += f'<path d="M{gx:.0f} {y_cursor + 30}H{gx + col_w:.0f}" stroke="{LINE}"/>'
             for (cx, cy, w, label, kind, name) in chips:
                 x, y = gx + cx, y_cursor + 44 + cy
@@ -580,7 +583,7 @@ def render_skills():
                     body += brand(name, round(ix, 1), round(iy, 1), 22, INK)
                 else:
                     body += lucide(name, round(ix, 1), round(iy, 1), 22, OLIVE)
-                body += t(round(x + 14 + 22 + 10, 1), round(y + chip_h / 2 + 5.5, 1), label, 15, INK, 700)
+                body += t(round(x + 14 + 22 + 10, 1), round(y + chip_h / 2 + 6, 1), label, 17, INK, 700)
         y_cursor += row_heights[ri] + between
         if ri < len(row_heights) - 1:
             body += f'<path d="M{pad} {y_cursor - between / 2:.0f}H{W - pad}" stroke="{LINE}" stroke-dasharray="2 6"/>'
@@ -599,9 +602,9 @@ def refresh_readme_versions(version):
 
 def main():
     contrib = read_json(DATA, {"total": 0, "weeks": []})
-    days = flatten(contrib)
+    days = flatten(contrib)[-WINDOW:]
     counts, active, current, best, busiest, monthly = activity_stats(days)
-    total = int(contrib.get("total", sum(counts.values())))
+    total = sum(counts.values())  # always equals the sum of the days shown
     repos = read_json(REPOS, {})
 
     render_hero(total, active, best)
