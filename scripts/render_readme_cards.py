@@ -543,8 +543,16 @@ def icon_url(kind, name):
     return f"{RAW}/assets/icons/{folder}/{name}.svg"
 
 
+DIVIDER = f'<img src="{RAW}/cards/divider.svg" width="100%" height="6" alt=""/>'
+
+
+def render_divider():
+    """Thin sand -> olive -> yellow rule used between README blocks (tables can't be un-bordered on GitHub)."""
+    save("divider.svg", 1200, 6, "Divider", f'<defs><linearGradient id="g"><stop offset="0" stop-color="{SAND}" stop-opacity="0"/><stop offset=".25" stop-color="{SAND}"/><stop offset=".6" stop-color="{OLIVE}"/><stop offset=".85" stop-color="{YELLOW}"/><stop offset="1" stop-color="{YELLOW}" stop-opacity="0"/></linearGradient></defs><rect y="2" width="1200" height="2" rx="1" fill="url(#g)"/>')
+
+
 def projects_html(repos):
-    cells = []
+    blocks = []
     for key, title, desc, stack in PROJECTS:
         data = repos.get(key, {})
         stars, forks = int(data.get("stargazers_count", 0)), int(data.get("forks_count", 0))
@@ -553,27 +561,23 @@ def projects_html(repos):
         except (ValueError, TypeError, AttributeError):
             updated = "—"
         chips = " ".join(f"<code>{escape(x)}</code>" for x in stack)
-        cells.append(
-            f'<td width="50%" valign="top">\n'
-            f'<h3><a href="https://github.com/{OWNER}/{key}">{escape(title)}</a></h3>\n'
-            f"<p>{escape(desc)}</p>\n<p>{chips}</p>\n"
-            f"<sub>★ {stars} &nbsp;·&nbsp; Forks {forks} &nbsp;·&nbsp; Updated {updated}</sub>\n</td>"
+        blocks.append(
+            f'<p><a href="https://github.com/{OWNER}/{key}"><b>{escape(title)}</b></a>'
+            f'&nbsp;&nbsp;<sub>★ {stars} &nbsp;·&nbsp; Forks {forks} &nbsp;·&nbsp; Updated {updated}</sub><br/>\n'
+            f"{escape(desc)}<br/>\n{chips}</p>"
         )
-    if len(cells) % 2:
-        cells.append('<td width="50%"></td>')
-    rows = "\n".join(f"<tr>\n{cells[i]}\n{cells[i + 1]}\n</tr>" for i in range(0, len(cells), 2))
-    return f"<table>\n{rows}\n</table>"
+    return f"\n\n{DIVIDER}\n\n".join(blocks)
 
 
 def skills_html():
-    rows = []
+    blocks = []
     for title, _icon, skills in SKILL_GROUPS:
         items = " &nbsp;·&nbsp; ".join(
             f'<img src="{icon_url(kind, name)}" width="18" height="18" align="absmiddle" alt=""/>&nbsp;{escape(label)}'
             for label, kind, name in skills
         )
-        rows.append(f'<tr>\n<th align="left" valign="top" width="190">{GROUP_NAMES.get(title, escape(title))}</th>\n<td>{items}</td>\n</tr>')
-    return "<table>\n" + "\n".join(rows) + "\n</table>"
+        blocks.append(f"<p><b>{GROUP_NAMES.get(title, escape(title))}</b><br/>\n{items}</p>")
+    return "\n".join(blocks)
 
 
 def replace_block(text, name, html):
@@ -609,6 +613,7 @@ def main():
     render_languages(repos)
 
     version = (days[-1]["date"] if days else date.today().isoformat()).replace("-", "")
+    render_divider()
     update_readme(version, repos)
     print(f"Rendered profile cards: {len(days)} contribution days, {total} contributions, {len(repos)} repositories.")
 
