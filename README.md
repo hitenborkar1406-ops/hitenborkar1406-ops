@@ -3,8 +3,8 @@
 <img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/hero.svg?v=20261119" width="100%" alt="Hiten Borkar — Building systems that solve real problems"/>
 
 <a href="https://hitenborkar1406-ops.github.io/Portfolio/"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/nav-portfolio.svg?v=20261119" width="24%" alt="Portfolio"/></a>
-<a href="https://www.linkedin.com/"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/nav-linkedin.svg?v=20261119" width="24%" alt="LinkedIn"/></a>
-<a href="https://leetcode.com/"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/nav-leetcode.svg?v=20261119" width="24%" alt="LeetCode"/></a>
+<a href="https://www.linkedin.com/in/hiten-borkar-153a29326"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/nav-linkedin.svg?v=20261119" width="24%" alt="LinkedIn"/></a>
+<a href="https://leetcode.com/u/Hiten-1406/"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/nav-leetcode.svg?v=20261119" width="24%" alt="LeetCode"/></a>
 <a href="mailto:hitenborkar1406@gmail.com"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/nav-email.svg?v=20261119" width="24%" alt="Email"/></a>
 
 </div>
