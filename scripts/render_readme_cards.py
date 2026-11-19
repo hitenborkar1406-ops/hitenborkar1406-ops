@@ -319,6 +319,50 @@ def render_tiles():
         save(file, 400, 210, f"{label} — {subtitle}", body)
 
 
+def render_about():
+    W, H = 1200, 300
+    focus = [
+        ("code-xml", "Full-stack applications", "React · FastAPI · Flask"),
+        ("brain-circuit", "Data & machine learning", "Pandas · XGBoost · Plotly"),
+        ("shield", "Tested & reliable", "Automated tests with pytest"),
+    ]
+    body = (
+        panel(W, H, 26, glow=(180, 40, 420, YELLOW, 0.22))
+        + icon_tile(48, 36, 44, "graduation-cap", 24)
+        + t(108, 66, "ABOUT", 16, OLIVE, 700, mono=True, ls=3)
+        + t(48, 124, "Practical software,", 40, INK, 800)
+        + t(48, 168, "driven by data.", 40, OLIVE, 800)
+        + t(48, 206, "I turn real-world problems into working systems, from", 18, SOFT, 500)
+        + t(48, 232, "predicting traffic congestion in Nagpur to analysing", 18, SOFT, 500)
+        + t(48, 258, "every ball of an IPL season.", 18, SOFT, 500)
+        + f'<path d="M668 40V260" stroke="{LINE}"/>'
+    )
+    for i, (icon, title, sub) in enumerate(focus):
+        y = 38 + i * 82
+        body += (
+            icon_tile(712, y, 56, icon, 30)
+            + t(790, y + 25, title, 24, INK, 800)
+            + t(790, y + 50, sub, 17, MUTED, 600)
+        )
+    save("about.svg", W, H, "About — Computer Science Engineer building practical, data-driven software", body)
+
+
+def render_connect():
+    W, H = 1200, 210
+    email = "hitenborkar1406@gmail.com"
+    pw = 24 + 24 + 12 + tw(email, 20, bold=True) + 48
+    body = (
+        panel(W, H, 26, fill="url(#olive)", stroke="#4A4D30", glow=(1050, 30, 420, YELLOW, 0.25))
+        + t(48, 92, "Let\u2019s build something useful.", 42, CREAM, 800)
+        + t(48, 134, "Reach out about projects, ideas or collaboration.", 20, "#D9D2B8", 500)
+        + t(48, 176, "PORTFOLIO  ·  LINKEDIN  ·  LEETCODE", 14, YELLOW, 700, mono=True, ls=2.5)
+        + f'<rect x="{W - 48 - pw:.0f}" y="76" width="{pw:.0f}" height="58" rx="29" fill="url(#yellow)"/>'
+        + lucide("mail", round(W - 48 - pw + 26), 93, 24, OLIVE)
+        + t(round(W - 48 - pw + 62), 112, email, 20, INK, 800)
+    )
+    save("connect.svg", W, H, "Let\u2019s build something useful — hitenborkar1406@gmail.com", body)
+
+
 def render_activity(total, days_count, active, current, best, busiest, monthly):
     W, H = 1200, 448
     keys = sorted(monthly) or [(date.today() - timedelta(days=30 * i)).strftime("%Y-%m") for i in range(11, -1, -1)]
@@ -625,6 +669,8 @@ def main():
     render_hero(total, active, best)
     render_nav()
     render_tiles()
+    render_about()
+    render_connect()
     render_activity(total, len(days), active, current, best, busiest, monthly)
     render_heatmap(days, total)
     render_repo_cards(repos)

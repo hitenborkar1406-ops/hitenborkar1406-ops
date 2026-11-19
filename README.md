@@ -9,6 +9,12 @@
 
 </div>
 
+<h2 align="center">About Me</h2>
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/about.svg?v=20261119" width="100%" alt="About: Computer Science Engineer building practical, data-driven software. Full-stack applications, data and machine learning, tested and reliable code."/>
+</div>
+
 <h2 align="center">The Work</h2>
 
 <div align="center">
@@ -44,6 +50,12 @@
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/skills.svg?v=20261119" width="100%" alt="Skills: languages, web development, ML and data, CS fundamentals, design and tools, Google Cloud"/>
+</div>
+
+<h2 align="center">Let’s Connect</h2>
+
+<div align="center">
+  <a href="mailto:hitenborkar1406@gmail.com"><img src="https://raw.githubusercontent.com/hitenborkar1406-ops/hitenborkar1406-ops/main/cards/connect.svg?v=20261119" width="100%" alt="Let’s build something useful. Email hitenborkar1406@gmail.com"/></a>
 </div>
 
 <br/>
