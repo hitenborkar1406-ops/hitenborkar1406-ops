@@ -2,7 +2,8 @@
 """Render the profile README cards (SVG) from GitHub contribution + repo data.
 
 Inputs : data/contributions.json, data/repos.json, assets/hero-anime.webp, assets/icons/*
-Outputs: cards/*.svg, and the `?v=` cache-busters on card URLs inside README.md
+Outputs: cards/*.svg, plus the generated <!-- projects --> and <!-- skills --> blocks and the
+         `?v=` cache-busters inside README.md
 
 Design notes
 - Palette follows a 60 / 30 / 10 rule: Desert Sand (main), Olive Drab (second),
@@ -498,46 +499,6 @@ def render_languages(repos):
     save("languages.svg", W, H, "Programming language distribution", body)
 
 
-def render_repo_cards(repos):
-    items = [
-        ("repo-traffic.svg", "SMART_TRAFFIC_MANAGEMENT_SYSTEM", "Smart Traffic Management", "Predictive congestion and alternate routing for Nagpur.", "React · FastAPI · XGBoost · Leaflet"),
-        ("repo-ipl.svg", "IPL_CRUNCH", "IPL Crunch ’26", "Ball-by-ball IPL analytics from raw Cricsheet JSON.", "Python · Pandas · Plotly · SciPy"),
-        ("repo-blindspot.svg", "PROMPTWARS", "The Blind Spot", "AI-assisted analysis of assumptions and decision biases.", "JavaScript · HTML · CSS"),
-        ("repo-rental.svg", "VEHICLE-RENTAL-SYSTEM", "Vehicle Rental System", "Flask app with booking rules and automated tests.", "Python · Flask · SQLite · pytest"),
-    ]
-    for i, (file, key, title, desc, stack) in enumerate(items, 1):
-        data = repos.get(key, {})
-        stars, forks = int(data.get("stargazers_count", 0)), int(data.get("forks_count", 0))
-        try:
-            updated = datetime.fromisoformat(data.get("updated_at", "").replace("Z", "+00:00")).strftime("%b %Y")
-        except (ValueError, TypeError, AttributeError):
-            updated = "—"
-        ox, oy = 10, 10  # card origin inside the canvas (the margin is the gap between cards)
-        body = (
-            panel(580, 216, 22, ox, oy, glow=(ox + 560, oy + 10, 280, YELLOW, 0.30))
-            + icon_tile(ox + 24, oy + 22, 46, "folder-git-2", 24)
-            + t(ox + 556, oy + 52, f"FEATURED · {i:02d}", 15, DIM, 700, "end", ls=2)
-            + t(ox + 24, oy + 104, title, 28, INK, 800)
-            + t(ox + 24, oy + 130, desc, 16, MUTED, 500)
-        )
-        cx = ox + 24
-        for tech in stack.split(" · "):
-            w = tw(tech, 14, bold=True) + 26
-            body += (
-                f'<rect x="{cx:.0f}" y="{oy + 146}" width="{w:.0f}" height="28" rx="14" fill="{RAISED}" stroke="{LINE}"/>'
-                + t(round(cx + w / 2), oy + 165, tech, 14, SOFT, 700, "middle")
-            )
-            cx += w + 8
-        fy = oy + 200
-        sx = ox + 24
-        body += lucide("star", sx, fy - 14, 16, OLIVE) + t(sx + 22, fy, stars, 16, INK, 700)
-        fx = sx + 22 + tw(str(stars), 16, True) + 22
-        body += lucide("git-fork", fx, fy - 14, 16, OLIVE) + t(fx + 22, fy, forks, 16, INK, 700)
-        ux = fx + 22 + tw(str(forks), 16, True) + 22
-        body += lucide("clock", ux, fy - 14, 16, MUTED) + t(ux + 22, fy, f"Updated {updated}", 16, MUTED, 500)
-        save(file, 600, 236, title, body)
-
-
 SKILL_GROUPS = [
     ("LANGUAGES", "code-xml", [
         ("C", "brand", "c"), ("C++", "brand", "cplusplus"), ("Python", "brand", "python"),
@@ -560,57 +521,75 @@ SKILL_GROUPS = [
 ]
 
 
-def render_skills():
-    W, pad, cols, gap = 1200, 48, 3, 28
-    col_w = (W - 2 * pad - gap * (cols - 1)) / cols
-    chip_h, chip_gap = 46, 10
-    layouts = []
-    for title, icon, skills in SKILL_GROUPS:
-        x, y, rows, row = 0.0, 0.0, [], []
-        for label, kind, name in skills:
-            w = 16 + 22 + 10 + tw(label, 17, bold=True) + 18
-            if x and x + w > col_w:
-                x, y = 0.0, y + chip_h + chip_gap
-            row.append((x, y, w, label, kind, name))
-            x += w + chip_gap
-        layouts.append((title, icon, row, y + chip_h))
-
-    row_heights = []
-    for r in range(0, len(layouts), cols):
-        row_heights.append(44 + max(h for *_, h in layouts[r:r + cols]))
-    top, between = 40, 34
-    H = top + sum(row_heights) + between * (len(row_heights) - 1) + 34
-
-    body = panel(W, H, 26, glow=(1100, 30, 420, YELLOW, 0.26))
-    y_cursor = top
-    for ri, r in enumerate(range(0, len(layouts), cols)):
-        for ci, (title, icon, chips, _) in enumerate(layouts[r:r + cols]):
-            gx = pad + ci * (col_w + gap)
-            body += lucide(icon, gx, y_cursor - 2, 20, OLIVE) + t(gx + 30, y_cursor + 14, title, 16, OLIVE, 800, ls=2.5)
-            body += f'<path d="M{gx:.0f} {y_cursor + 30}H{gx + col_w:.0f}" stroke="{LINE}"/>'
-            for (cx, cy, w, label, kind, name) in chips:
-                x, y = gx + cx, y_cursor + 44 + cy
-                body += f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{chip_h}" rx="12" fill="{RAISED}" stroke="{LINE}"/>'
-                ix, iy = x + 14, y + (chip_h - 22) / 2
-                if kind == "brand":
-                    body += brand(name, round(ix, 1), round(iy, 1), 22)
-                elif kind == "mono":
-                    body += brand(name, round(ix, 1), round(iy, 1), 22, INK)
-                else:
-                    body += lucide(name, round(ix, 1), round(iy, 1), 22, OLIVE)
-                body += t(round(x + 14 + 22 + 10, 1), round(y + chip_h / 2 + 6, 1), label, 17, INK, 700)
-        y_cursor += row_heights[ri] + between
-        if ri < len(row_heights) - 1:
-            body += f'<path d="M{pad} {y_cursor - between / 2:.0f}H{W - pad}" stroke="{LINE}" stroke-dasharray="2 6"/>'
-    save("skills.svg", W, int(H), "Technical skills", body)
+# ── Real-markup sections (text stays selectable, searchable and linkable) ────
+OWNER = "hitenborkar1406-ops"
+RAW = f"https://raw.githubusercontent.com/{OWNER}/{OWNER}/main"
+PROJECTS = [  # (repository, title, description, stack)
+    ("SMART_TRAFFIC_MANAGEMENT_SYSTEM", "Smart Traffic Management", "Predictive congestion and alternate routing for Nagpur.", ["React", "FastAPI", "XGBoost", "Leaflet"]),
+    ("IPL_CRUNCH", "IPL Crunch ’26", "Ball-by-ball IPL analytics from raw Cricsheet JSON.", ["Python", "Pandas", "Plotly", "SciPy"]),
+    ("PROMPTWARS", "The Blind Spot", "AI-assisted analysis of assumptions and decision biases.", ["JavaScript", "HTML", "CSS"]),
+    ("VEHICLE-RENTAL-SYSTEM", "Vehicle Rental System", "Flask app with booking rules and automated tests.", ["Python", "Flask", "SQLite", "pytest"]),
+]
+GROUP_NAMES = {
+    "LANGUAGES": "Languages", "WEB DEVELOPMENT": "Web Development", "ML & DATA": "ML &amp; Data",
+    "CS FUNDAMENTALS": "CS Fundamentals", "DESIGN & TOOLS": "Design &amp; Tools", "CLOUD · GOOGLE CLOUD": "Cloud · Google Cloud",
+}
+NEUTRAL_BRANDS = {"pandas", "matplotlib", "c"}  # colours that vanish on one theme -> use the neutral copy
 
 
-def refresh_readme_versions(version):
-    """Bump the ?v= cache-buster on card URLs so GitHub's image proxy refetches them."""
+def icon_url(kind, name):
+    """Brand logos keep their colours; dark-only or generic icons use the theme-neutral copies."""
+    folder = "neutral" if kind in ("lucide", "mono") or name in NEUTRAL_BRANDS else "brands"
+    return f"{RAW}/assets/icons/{folder}/{name}.svg"
+
+
+def projects_html(repos):
+    cells = []
+    for key, title, desc, stack in PROJECTS:
+        data = repos.get(key, {})
+        stars, forks = int(data.get("stargazers_count", 0)), int(data.get("forks_count", 0))
+        try:
+            updated = datetime.fromisoformat(data.get("updated_at", "").replace("Z", "+00:00")).strftime("%b %Y")
+        except (ValueError, TypeError, AttributeError):
+            updated = "—"
+        chips = " ".join(f"<code>{escape(x)}</code>" for x in stack)
+        cells.append(
+            f'<td width="50%" valign="top">\n'
+            f'<h3><a href="https://github.com/{OWNER}/{key}">{escape(title)}</a></h3>\n'
+            f"<p>{escape(desc)}</p>\n<p>{chips}</p>\n"
+            f"<sub>★ {stars} &nbsp;·&nbsp; Forks {forks} &nbsp;·&nbsp; Updated {updated}</sub>\n</td>"
+        )
+    if len(cells) % 2:
+        cells.append('<td width="50%"></td>')
+    rows = "\n".join(f"<tr>\n{cells[i]}\n{cells[i + 1]}\n</tr>" for i in range(0, len(cells), 2))
+    return f"<table>\n{rows}\n</table>"
+
+
+def skills_html():
+    rows = []
+    for title, _icon, skills in SKILL_GROUPS:
+        items = " &nbsp;·&nbsp; ".join(
+            f'<img src="{icon_url(kind, name)}" width="18" height="18" align="absmiddle" alt=""/>&nbsp;{escape(label)}'
+            for label, kind, name in skills
+        )
+        rows.append(f'<tr>\n<th align="left" valign="top" width="190">{GROUP_NAMES.get(title, escape(title))}</th>\n<td>{items}</td>\n</tr>')
+    return "<table>\n" + "\n".join(rows) + "\n</table>"
+
+
+def replace_block(text, name, html):
+    """Replace everything between <!-- name:start --> and <!-- name:end -->."""
+    pattern = re.compile(rf"(<!-- {name}:start -->).*?(<!-- {name}:end -->)", re.S)
+    return pattern.sub(lambda m: f"{m.group(1)}\n{html}\n{m.group(2)}", text) if pattern.search(text) else text
+
+
+def update_readme(version, repos):
+    """Rebuild the generated sections and bump ?v= so GitHub's image proxy refetches the cards."""
     if not README.exists():
         return
     text = README.read_text(encoding="utf-8")
-    new = re.sub(r"(cards/[\w-]+\.svg)\?v=[\w-]+", rf"\1?v={version}", text)
+    new = replace_block(text, "projects", projects_html(repos))
+    new = replace_block(new, "skills", skills_html())
+    new = re.sub(r"(cards/[\w-]+\.svg)\?v=[\w-]+", rf"\1?v={version}", new)
     if new != text:
         README.write_text(new, encoding="utf-8")
 
@@ -627,12 +606,10 @@ def main():
     render_tiles()
     render_activity(total, len(days), active, current, best, busiest, monthly)
     render_heatmap(days, total)
-    render_repo_cards(repos)
     render_languages(repos)
-    render_skills()
 
     version = (days[-1]["date"] if days else date.today().isoformat()).replace("-", "")
-    refresh_readme_versions(version)
+    update_readme(version, repos)
     print(f"Rendered profile cards: {len(days)} contribution days, {total} contributions, {len(repos)} repositories.")
 
 
