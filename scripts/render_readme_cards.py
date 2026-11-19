@@ -35,7 +35,22 @@ LINE, RAISED = "#BDA980", "#E8DBC2"
 HEAT = ["#C8B28A", "#B0AC7B", "#878B5E", "#5B5E3C", "#FFD21F"]  # level 0..4
 
 SANS = '-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif'
-STYLE = f"text{{font-family:{SANS}}}"
+STYLE = (
+    f"text{{font-family:{SANS}}}"
+    "@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}"
+    "@keyframes sweep{from{transform:scaleX(0)}to{transform:scaleX(1)}}"
+    "@keyframes pop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}"
+    "@keyframes fade{from{opacity:0}to{opacity:1}}"
+    "@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}"
+    "@keyframes breathe{0%,100%{opacity:.35}50%{opacity:.75}}"
+    ".grow{transform-box:fill-box;transform-origin:50% 100%;animation:grow .9s cubic-bezier(.2,.7,.2,1) both}"
+    ".sweep{transform-box:fill-box;transform-origin:0 50%;animation:sweep .8s cubic-bezier(.2,.7,.2,1) both}"
+    ".pop{transform-box:fill-box;transform-origin:50% 50%;animation:pop .45s ease-out both}"
+    ".fade{animation:fade .5s ease-out both}"
+    ".pulse{animation:pulse 1.8s ease-in-out infinite}"
+    ".breathe{animation:breathe 4.5s ease-in-out infinite}"
+    "@media(prefers-reduced-motion:reduce){*{animation:none!important}}"
+)
 
 DEFS = (
     '<linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E7D8BB"/><stop offset="1" stop-color="#D2BA94"/></linearGradient>'
@@ -75,14 +90,14 @@ def read_json(path, default):
         return default
 
 
-def t(x, y, s, size=16, fill=INK, w=400, anchor="start", mono=False, ls=0, op=None):
+def t(x, y, s, size=16, fill=INK, w=400, anchor="start", mono=False, ls=0, op=None, extra=""):
     """Text node. `mono=True` marks small letter-spaced caps labels (rendered bold sans)."""
     if mono:
         w = max(w, 600)
     a = f' text-anchor="{anchor}"' if anchor != "start" else ""
     l = f' letter-spacing="{ls}"' if ls else ""
     o = f' fill-opacity="{op}"' if op is not None else ""
-    return f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{w}" fill="{fill}"{a}{l}{o}>{escape(str(s))}</text>'
+    return f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{w}" fill="{fill}"{a}{l}{o}{extra}>{escape(str(s))}</text>'
 
 
 def tw(s, size, mono=False, bold=False):
@@ -251,13 +266,13 @@ def render_hero(total, active, best):
         f'<rect x="64" y="66" width="28" height="4" rx="2" fill="{OLIVE}"/>'
         + t(106, 74, "HITEN BORKAR · ENGINEERING PORTFOLIO", 16, OLIVE, 700, ls=3)
         + t(64, 168, "Building systems", 52, INK, 800)
-        + f'<rect x="58" y="206" width="{hl_w + 12:.0f}" height="26" rx="8" fill="{YELLOW}" fill-opacity=".9"/>'
+        + f'<rect x="58" y="206" width="{hl_w + 12:.0f}" height="26" rx="8" fill="{YELLOW}" fill-opacity=".9" class="sweep" style="animation-delay:.5s"/>'
         + t(64, 236, line2, 52, OLIVE, 800)
         + t(64, 292, "Computer Science Engineer", 22, SOFT, 600)
         + chips
         + f'<path d="M64 392H760" stroke="{LINE}"/>'
         + stats
-        + f'<rect x="{px}" y="{py}" width="{ps}" height="{ps}" rx="26" fill="{YELLOW}" opacity=".6" filter="url(#blur)"/>'
+        + f'<rect x="{px}" y="{py}" width="{ps}" height="{ps}" rx="26" fill="{YELLOW}" opacity=".6" filter="url(#blur)" class="breathe"/>'
         f'<rect x="{px - 5}" y="{py - 5}" width="{ps + 10}" height="{ps + 10}" rx="31" fill="none" stroke="{OLIVE}" stroke-width="3"/>'
         f'<image x="{px}" y="{py}" width="{ps}" height="{ps}" preserveAspectRatio="xMidYMid slice" clip-path="url(#portrait-clip)" href="data:image/webp;base64,{b64}"/>'
     )
@@ -334,8 +349,8 @@ def render_activity(total, days_count, active, current, best, busiest, monthly):
         h = 0 if value == 0 else max(8, (base - top) * (value / maximum) ** 0.7)
         is_peak = key == peak and value > 0
         if h:
-            body += top_bar(round(x, 1), round(base - h, 1), bw, round(h, 1), 9, "url(#peak)" if is_peak else "url(#bar)")
-            body += t(round(x + bw / 2, 1), round(base - h - 10, 1), f"{value:,}", 18 if is_peak else 15, INK if is_peak else MUTED, 800 if is_peak else 600, "middle")
+            body += top_bar(round(x, 1), round(base - h, 1), bw, round(h, 1), 9, "url(#peak)" if is_peak else "url(#bar)", f' class="grow" style="animation-delay:{i * 0.06:.2f}s"')
+            body += t(round(x + bw / 2, 1), round(base - h - 10, 1), f"{value:,}", 18 if is_peak else 15, INK if is_peak else MUTED, 800 if is_peak else 600, "middle", extra=f' class="fade" style="animation-delay:{0.55 + i * 0.06:.2f}s"')
         month = datetime.strptime(key, "%Y-%m")
         body += t(round(x + bw / 2, 1), 402, month.strftime("%b"), 15, MUTED, 600, "middle")
         if i == 0 or month.month == 1:
@@ -411,11 +426,11 @@ def render_heatmap(days, total):
             count = counts.get(key, 0)
             x, y = x0 + col * pitch, y0 + row * pitch
             label = f"{day.strftime('%A, %B %-d, %Y')}: {count} contribution{'' if count == 1 else 's'}"
-            body += f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" rx="4" fill="{HEAT[level(count)]}"><title>{escape(label)}</title></rect>'
+            body += f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" rx="4" fill="{HEAT[level(count)]}" class="pop" style="animation-delay:{0.1 + col * 0.012 + row * 0.008:.3f}s"><title>{escape(label)}</title></rect>'
             if key == peak_day and count > 0:
                 peak_cell = (x, y)
     if peak_cell:
-        body += f'<rect x="{peak_cell[0] - 2.5}" y="{peak_cell[1] - 2.5}" width="{cell + 5}" height="{cell + 5}" rx="6" fill="none" stroke="{INK}" stroke-width="2"/>'
+        body += f'<rect x="{peak_cell[0] - 2.5}" y="{peak_cell[1] - 2.5}" width="{cell + 5}" height="{cell + 5}" rx="6" fill="none" stroke="{INK}" stroke-width="2" class="pulse"/>'
 
     fy = 348
     if peak_day:
@@ -467,7 +482,7 @@ def render_languages(repos):
     cursor = bx
     for i, (name, amount) in enumerate(shown):
         w = bw * amount / grand
-        body += f'<rect x="{cursor:.1f}" y="150" width="{max(w - 2, 1):.1f}" height="18" fill="{color(i, name)}"/>'
+        body += f'<rect x="{cursor:.1f}" y="150" width="{max(w - 2, 1):.1f}" height="18" fill="{color(i, name)}" class="sweep" style="animation-delay:{0.2 + i * 0.12:.2f}s"/>'
         cursor += w
     body += "</g>"
 
